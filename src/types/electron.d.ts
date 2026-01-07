@@ -44,6 +44,16 @@ export interface ElectronAPI {
     getAccountStatus: (data: {
         apiKey: string;
     }) => Promise<AccountStatus>;
+    uploadImage: (data: {
+        apiKey: string;
+        imageBase64: string;
+        fileName: string;
+    }) => Promise<{ success: boolean; fileName?: string; error?: string }>;
+    cancelTask: (data: {
+        apiKey: string;
+        taskId: string;
+    }) => Promise<{ code: number; msg: string; data: any }>;
+    onTaskId: (callback: (taskId: string) => void) => void;
 }
 
 declare global {

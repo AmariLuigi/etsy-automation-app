@@ -16,9 +16,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // AI Generation
     generateContent: (data) => ipcRenderer.invoke('runninghub:generate', data),
 
+    // Image Upload
+    uploadImage: (data) => ipcRenderer.invoke('runninghub:uploadImage', data),
+
     // Watermark Removal
     removeWatermark: (data) => ipcRenderer.invoke('runninghub:removeWatermark', data),
 
     // Account Status
     getAccountStatus: (data) => ipcRenderer.invoke('runninghub:accountStatus', data),
+
+    // Cancel Task
+    cancelTask: (data) => ipcRenderer.invoke('runninghub:cancel', data),
+
+    // Event listeners
+    onTaskId: (callback) => ipcRenderer.on('runninghub:task-id', (event, taskId) => callback(taskId)),
 });

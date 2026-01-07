@@ -30,6 +30,9 @@ export default function ProductWorkspace() {
                         "stl files",
                         "3d print",
                         "resin print",
+                        "3d print file",
+                        "tabletop",
+                        "miniature"
                     ],
                 })
             }
@@ -45,9 +48,9 @@ export default function ProductWorkspace() {
 
     return (
         <div className="h-full flex flex-col overflow-hidden bg-stone-950">
-            {/* Workspace Header - Inner Wrapper for Padding Integrity */}
-            <header className="h-20 border-b border-stone-800 bg-stone-950/80 backdrop-blur-md shrink-0">
-                <div className="h-full px-12 xl:px-20 flex items-center justify-between">
+            {/* STICKY HEADER BAR */}
+            <header className="h-20 border-b border-stone-800 bg-stone-950/80 backdrop-blur-md shrink-0 shadow-2xl z-20 sticky top-0">
+                <div className="h-full px-8 flex items-center justify-between">
                     <div className="flex flex-col justify-center">
                         <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white leading-none">Workspace</h2>
                         <p className="text-[10px] text-stone-500 uppercase font-bold tracking-widest mt-1.5 flex items-center gap-2">
@@ -65,7 +68,7 @@ export default function ProductWorkspace() {
                         <Button
                             variant="ghost"
                             onClick={handleReset}
-                            className="text-[10px] font-black uppercase tracking-widest text-stone-500 hover:text-primary transition-all h-9 rounded-none border border-transparent hover:border-primary/20 px-4"
+                            className="text-[10px] font-black uppercase tracking-widest text-stone-500 hover:text-primary transition-all h-9 rounded-none border border-stone-800/50 hover:border-primary/20 px-4"
                         >
                             <ArrowLeft className="w-3.5 h-3.5 mr-2" />
                             New Listing
@@ -74,26 +77,30 @@ export default function ProductWorkspace() {
                 </div>
             </header>
 
-            {/* Content Area - centered when waiting for folder */}
-            <div className={`flex-1 overflow-y-auto custom-scrollbar ${!folderData ? 'flex items-center justify-center p-10' : ''}`}>
-                {!folderData ? (
-                    <div className="w-full max-w-2xl animate-fade-in-up">
-                        <DropZone
-                            onFolderSelect={handleFolderSelect}
-                            isDragging={isDragging}
-                            onDragStateChange={setIsDragging}
-                        />
-                    </div>
-                ) : (
-                    <div className="p-10 animate-fade-in">
-                        <ProductEditor
-                            folderData={folderData}
-                            generatedContent={generatedContent}
-                            onContentChange={setGeneratedContent}
-                        />
-                    </div>
-                )}
-            </div>
+            {/* SCROLLABLE CONTENT AREA */}
+            <main className="flex-1 overflow-y-auto custom-scrollbar bg-stone-950">
+                <div className="min-h-full w-full py-20 px-8 flex flex-col items-center">
+                    {!folderData ? (
+                        <div className="flex-1 flex items-center justify-center w-full max-w-4xl">
+                            <div className="w-full max-w-2xl animate-fade-in-up">
+                                <DropZone
+                                    onFolderSelect={handleFolderSelect}
+                                    isDragging={isDragging}
+                                    onDragStateChange={setIsDragging}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="max-w-[1400px] w-full animate-fade-in">
+                            <ProductEditor
+                                folderData={folderData}
+                                generatedContent={generatedContent}
+                                onContentChange={setGeneratedContent}
+                            />
+                        </div>
+                    )}
+                </div>
+            </main>
         </div>
     )
 }

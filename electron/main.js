@@ -145,6 +145,49 @@ ipcMain.handle('runninghub:accountStatus', async (event, { apiKey }) => {
   }
 });
 
+// IPC Handler: runninghub:uploadImage
+ipcMain.handle('runninghub:uploadImage', async (event, { apiKey, imageBase64, fileName }) => {
+  console.log('📤 [RunningHub] Uploading image:', fileName);
+  if (!apiKey) throw new Error('API Key is required');
+
+  try {
+    const cleanApiKey = apiKey.trim();
+    const imageBuffer = Buffer.from(imageBase64.split(',')[1] || imageBase64, 'base64');
+    const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+
+    let body = `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="apiKey"\r\n\r\n${cleanApiKey}\r\n`;
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="fileType"\r\n\r\ninput\r\n`;
+    body += `--${boundary}\r\n`;
+    body += `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n`;
+    body += `Content-Type: image/png\r\n\r\n`;
+
+    const bodyStart = Buffer.from(body, 'utf8');
+    const bodyEnd = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+    const fullBody = Buffer.concat([bodyStart, imageBuffer, bodyEnd]);
+
+    const uploadResponse = await fetch('https://www.runninghub.ai/task/openapi/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Host': 'www.runninghub.ai'
+      },
+      body: fullBody
+    });
+
+    const uploadResult = await uploadResponse.json();
+    if (uploadResult.code !== 0) {
+      throw new Error(uploadResult.msg || 'Failed to upload image');
+    }
+
+    return { success: true, fileName: uploadResult.data.fileName };
+  } catch (error) {
+    console.error('❌ [RunningHub] Upload Error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // IPC Handler: RunningHub AI Generation
 ipcMain.handle('runninghub:generate', async (event, { apiKey, workflowId, nodeInfo }) => {
   console.log('🚀 [RunningHub] Starting Generation...');
@@ -182,13 +225,14 @@ ipcMain.handle('runninghub:generate', async (event, { apiKey, workflowId, nodeIn
 
     const taskId = runResult.data.taskId;
     console.log('🆔 [RunningHub] Task ID:', taskId);
+    event.sender.send('runninghub:task-id', taskId);
 
     // 2. Poll for completion
-    let attempts = 0;
-    while (attempts < 60) {
+    let errorCount = 0;
+    while (true) {
       await new Promise(resolve => setTimeout(resolve, 3000)); // Every 3 seconds
 
-      console.log(`🔍 [RunningHub] Polling Status (Attempt ${attempts + 1})...`);
+      console.log(`🔍 [RunningHub] Polling Status for ${taskId}...`);
       const statusResponse = await fetch('https://www.runninghub.ai/task/openapi/status', {
         method: 'POST',
         headers: {
@@ -206,11 +250,8 @@ ipcMain.handle('runninghub:generate', async (event, { apiKey, workflowId, nodeIn
 
       if (statusResult.code === 0) {
         const data = statusResult.data;
-
-        // Handle both string and numeric status
         let status;
         if (typeof data === 'string') {
-          // String status: "QUEUED", "RUNNING", "SUCCESS", "FAILED"
           status = data;
         } else if (typeof data === 'object' && data.status !== undefined) {
           status = data.status;
@@ -218,15 +259,11 @@ ipcMain.handle('runninghub:generate', async (event, { apiKey, workflowId, nodeIn
 
         console.log(`✨ [RunningHub] Current Status: ${status}`);
 
-        // Check for success (both string "SUCCESS" and numeric 2)
         if (status === 'SUCCESS' || status === 2) {
           console.log('✅ [RunningHub] Task Successful! Extracting results...');
-
           let resultData = (typeof data === 'object' ? (data.taskResult || data) : null);
-          let resultText = null;
 
-          // If current status data isn't what we need, fetch from outputs
-          if (!resultData || typeof resultData === 'string') {
+          if (!resultData || typeof resultData === 'string' || !resultData.taskResult) {
             console.log('🔄 [RunningHub] Fetching detailed outputs...');
             const outputResp = await fetch('https://www.runninghub.ai/task/openapi/outputs', {
               method: 'POST',
@@ -237,45 +274,67 @@ ipcMain.handle('runninghub:generate', async (event, { apiKey, workflowId, nodeIn
             resultData = outputResult.data;
           }
 
-          // Handle array of file objects (like in user's example)
           if (Array.isArray(resultData)) {
-            console.log('📄 [RunningHub] Output is a file list. Searching for .txt file...');
-            const txtFile = resultData.find(f => f.fileType === 'txt' || f.fileUrl?.endsWith('.txt'));
+            const videoFile = resultData.find(f =>
+              ['mp4', 'mov', 'webm'].includes(f.fileType?.toLowerCase()) ||
+              /\.(mp4|mov|webm)$/i.test(f.fileUrl)
+            );
+            if (videoFile && videoFile.fileUrl) return videoFile.fileUrl;
 
+            const txtFile = resultData.find(f => f.fileType === 'txt' || f.fileUrl?.endsWith('.txt'));
             if (txtFile && txtFile.fileUrl) {
-              console.log('📥 [RunningHub] Fetching text content from:', txtFile.fileUrl);
               const textResp = await fetch(txtFile.fileUrl);
-              resultText = await textResp.text();
-              console.log('📝 [RunningHub] Content fetched successfully!');
+              return await textResp.text();
             }
-          } else if (typeof resultData === 'object' && resultData.taskResult) {
-            resultText = resultData.taskResult;
-          } else {
-            resultText = JSON.stringify(resultData);
+
+            const firstFile = resultData.find(f => f.fileUrl);
+            if (firstFile) return firstFile.fileUrl;
           }
 
-          return resultText || 'Generation complete.';
+          if (typeof resultData === 'string' && resultData.startsWith('http')) return resultData;
+          if (typeof resultData === 'object' && resultData?.taskResult) return resultData.taskResult;
+          return typeof resultData === 'string' ? resultData : JSON.stringify(resultData);
         }
 
-        // Check for failure (both string "FAILED" and numeric 3)
         if (status === 'FAILED' || status === 3) {
-          console.log('❌ [RunningHub] Task Failed on RunningHub');
           throw new Error('Task failed on RunningHub');
         }
       } else {
         console.warn('⚠️ [RunningHub] Status API error:', statusResult.code, statusResult.msg);
+        if (statusResult.code === 807) return 'Task cancelled.';
+
+        // Stop if we hit too many API errors in a row
+        errorCount++;
+        if (errorCount > 10) throw new Error(`API Connection lost: ${statusResult.msg}`);
       }
 
-      attempts++;
     }
-    console.error('⏰ [RunningHub] Task Timed Out locally');
-    throw new Error('Task timed out');
   } catch (error) {
     console.error('❌ [RunningHub] OpenAPI Error:', error);
     throw error;
   }
 });
 
+
+// IPC Handler: runninghub:cancel
+ipcMain.handle('runninghub:cancel', async (event, { apiKey, taskId }) => {
+  console.log('🛑 [RunningHub] Cancelling task:', taskId);
+  try {
+    const response = await fetch('https://www.runninghub.ai/task/openapi/cancel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Host': 'www.runninghub.ai'
+      },
+      body: JSON.stringify({ apiKey, taskId })
+    });
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('❌ [RunningHub] Cancel Error:', error);
+    return { code: -1, msg: error.message };
+  }
+});
 
 // IPC Handler: RunningHub Watermark Removal
 ipcMain.handle('runninghub:removeWatermark', async (event, data) => {

@@ -14,7 +14,8 @@ import {
     Info,
     Workflow,
     Hash,
-    Type
+    Type,
+    Video
 } from "lucide-react"
 
 export default function SettingsPage() {
@@ -23,6 +24,7 @@ export default function SettingsPage() {
     const [promptNodeId, setPromptNodeId] = useState("")
     const [promptFieldName, setPromptFieldName] = useState("")
     const [watermarkWorkflowId, setWatermarkWorkflowId] = useState("")
+    const [videoWorkflowId, setVideoWorkflowId] = useState("")
     const [etsyApiKey, setEtsyApiKey] = useState("")
     const [saved, setSaved] = useState(false)
 
@@ -32,6 +34,7 @@ export default function SettingsPage() {
         setPromptNodeId(localStorage.getItem("promptNodeId") || "5")
         setPromptFieldName(localStorage.getItem("promptFieldName") || "text")
         setWatermarkWorkflowId(localStorage.getItem("watermarkWorkflowId") || "2008860019835543553")
+        setVideoWorkflowId(localStorage.getItem("videoWorkflowId") || "2008910022977261570")
         setEtsyApiKey(localStorage.getItem("etsyApiKey") || "")
     }, [])
 
@@ -41,6 +44,7 @@ export default function SettingsPage() {
         localStorage.setItem("promptNodeId", promptNodeId)
         localStorage.setItem("promptFieldName", promptFieldName)
         localStorage.setItem("watermarkWorkflowId", watermarkWorkflowId)
+        localStorage.setItem("videoWorkflowId", videoWorkflowId)
         localStorage.setItem("etsyApiKey", etsyApiKey)
 
         setSaved(true)
@@ -109,6 +113,20 @@ export default function SettingsPage() {
                                             placeholder="Workflow Id..."
                                             value={watermarkWorkflowId}
                                             onChange={(e) => setWatermarkWorkflowId(e.target.value)}
+                                            className="bg-stone-950 border-stone-800 h-11 text-[11px] rounded-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-stone-600 uppercase tracking-widest flex items-center gap-2">
+                                            <Video className="w-3.5 h-3.5" /> Video Workflow ID
+                                        </label>
+                                        <Input
+                                            placeholder="Workflow ID..."
+                                            value={videoWorkflowId}
+                                            onChange={(e) => setVideoWorkflowId(e.target.value)}
                                             className="bg-stone-950 border-stone-800 h-11 text-[11px] rounded-none"
                                         />
                                     </div>
