@@ -24,8 +24,10 @@ import {
     Monitor,
     Eye,
     ChevronFirst,
-    ChevronLast
+    ChevronLast,
+    Pencil
 } from "lucide-react"
+import ImageEditor from "./ImageEditor"
 
 interface ProductEditorProps {
     folderData: FolderAnalysis
@@ -356,7 +358,7 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
 
     return (
         <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-stone-900/60 h-12 p-1 border border-stone-800/60 rounded-none">
+            <TabsList className="grid w-full grid-cols-6 bg-stone-900/60 h-12 p-1 border border-stone-800/60 rounded-none">
                 <TabsTrigger value="info" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                     <Info className="w-3.5 h-3.5" /> Info
                 </TabsTrigger>
@@ -368,6 +370,9 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                 </TabsTrigger>
                 <TabsTrigger value="video" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                     <Video className="w-3.5 h-3.5" /> Video
+                </TabsTrigger>
+                <TabsTrigger value="edit" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <Pencil className="w-3.5 h-3.5" /> Edit
                 </TabsTrigger>
                 <TabsTrigger value="publish" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                     <Rocket className="w-3.5 h-3.5" /> Publish
@@ -790,6 +795,10 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                 </TabsContent>
 
                 {/* --- PUBLISH TAB --- */}
+                <TabsContent value="edit" className="m-0">
+                    <ImageEditor />
+                </TabsContent>
+
                 <TabsContent value="publish" className="m-0 flex flex-col gap-10">
                     {/* Tags Card */}
                     <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
