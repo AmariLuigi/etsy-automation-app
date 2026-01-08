@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Separator } from "@/components/ui/separator"
 import {
     Info,
     FileText,
@@ -20,7 +21,10 @@ import {
     Loader2,
     Video,
     Play,
-    Monitor
+    Monitor,
+    Eye,
+    ChevronFirst,
+    ChevronLast
 } from "lucide-react"
 
 interface ProductEditorProps {
@@ -45,7 +49,7 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
 
     // Watermark removal state
     const [uploadedImages, setUploadedImages] = useState<{ name: string; base64: string }[]>([])
-    const [processedImages, setProcessedImages] = useState<{ name: string; url: string }[]>([])
+    const [processedImages, setProcessedImages] = useState<{ name: string; url: string; original: string }[]>([])
     const [isProcessingWatermarks, setIsProcessingWatermarks] = useState(false)
     const [watermarkProgress, setWatermarkProgress] = useState({ current: 0, total: 0 })
 
@@ -60,6 +64,11 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
     const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null)
     const [videoTimer, setVideoTimer] = useState(0)
     const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+
+    // Image preview state
+    const [previewImage, setPreviewImage] = useState<string | null>(null)
+    const [comparisonPreview, setComparisonPreview] = useState<{ before: string; after: string } | null>(null)
+    const [comparisonPosition, setComparisonPosition] = useState(50)
 
     useEffect(() => {
         let interval: any;
@@ -125,7 +134,7 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
         setIsProcessingWatermarks(true)
         setWatermarkProgress({ current: 0, total: uploadedImages.length })
 
-        const results: { name: string; url: string }[] = []
+        const results: { name: string; url: string; original: string }[] = []
 
         for (let i = 0; i < uploadedImages.length; i++) {
             const img = uploadedImages[i]
@@ -141,7 +150,7 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                 })
 
                 if (result.success && result.imageUrl) {
-                    results.push({ name: img.name, url: result.imageUrl })
+                    results.push({ name: img.name, url: result.imageUrl, original: img.base64 })
                 }
             } catch (error) {
                 console.error(`Error processing ${img.name}:`, error)
@@ -346,119 +355,113 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
     }
 
     return (
-        <Tabs defaultValue="info" className="w-full animate-fade-in-up">
-            <TabsList className="grid w-full grid-cols-5 bg-stone-900 h-14 p-1 border border-stone-800">
-                <TabsTrigger value="info" className="flex gap-2 font-bold uppercase tracking-tight text-[11px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    <Info className="w-4 h-4" /> Info
+        <Tabs defaultValue="info" className="w-full">
+            <TabsList className="grid w-full grid-cols-5 bg-stone-900/60 h-12 p-1 border border-stone-800/60 rounded-none">
+                <TabsTrigger value="info" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <Info className="w-3.5 h-3.5" /> Info
                 </TabsTrigger>
-                <TabsTrigger value="description" className="flex gap-2 font-bold uppercase tracking-tight text-[11px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    <FileText className="w-4 h-4" /> Description
+                <TabsTrigger value="description" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <FileText className="w-3.5 h-3.5" /> Description
                 </TabsTrigger>
-                <TabsTrigger value="images" className="flex gap-2 font-bold uppercase tracking-tight text-[11px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    <ImageIcon className="w-4 h-4" /> Images
+                <TabsTrigger value="images" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <ImageIcon className="w-3.5 h-3.5" /> Images
                 </TabsTrigger>
-                <TabsTrigger value="video" className="flex gap-2 font-bold uppercase tracking-tight text-[11px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    <Video className="w-4 h-4" /> Video
+                <TabsTrigger value="video" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <Video className="w-3.5 h-3.5" /> Video
                 </TabsTrigger>
-                <TabsTrigger value="publish" className="flex gap-2 font-bold uppercase tracking-tight text-[11px] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                    <Rocket className="w-4 h-4" /> Publish
+                <TabsTrigger value="publish" className="flex gap-2 font-bold uppercase tracking-wide text-[10px] rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                    <Rocket className="w-3.5 h-3.5" /> Publish
                 </TabsTrigger>
             </TabsList>
 
-            <div className="mt-20 animate-fade-in pr-2">
-                <TabsContent value="info" className="m-0 pt-10">
-                    <div className="grid grid-cols-6 gap-8">
-                        {/* 1. Folder Name */}
-                        <Card className="col-span-4 bg-stone-900 border-stone-800 p-10 flex flex-col items-center justify-center text-center">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mb-4 block">Product Folder</label>
-                            <h3 className="text-2xl font-black text-stone-100 uppercase tracking-tight truncate w-full">{folderData.folderName}</h3>
+            <div className="mt-8 animate-fade-in">
+                <TabsContent value="info" className="m-0 flex flex-col gap-10">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-4 gap-6">
+                        <Card className="col-span-2 row-span-2 bg-stone-900/50 border-stone-800/60 !pl-6 !pr-10 py-6 rounded-none">
+                            <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-3 block">Product Folder</label>
+                            <h3 className="text-xl font-bold text-stone-100 uppercase tracking-tight truncate">{folderData.folderName}</h3>
+                        </Card>
+                        <Card className="bg-stone-900/50 border-stone-800/60 p-6 text-center rounded-none">
+                            <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-3 block">Total Files</label>
+                            <div className="text-3xl font-bold text-primary tabular-nums">{folderData.totalFiles}</div>
+                        </Card>
+                        <Card className="bg-stone-900/50 border-stone-800/60 p-6 text-center rounded-none">
+                            <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-3 block">Size</label>
+                            <div className="text-2xl font-bold text-stone-200 tabular-nums">{sizeGB} <span className="text-sm font-medium text-stone-600">GB</span></div>
                         </Card>
 
-                        {/* 2. Total Files */}
-                        <Card className="col-span-2 bg-stone-900 border-stone-800 p-10 flex flex-col items-center justify-center text-center">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2">Total Files</label>
-                            <div className="text-4xl font-black text-primary leading-none">{folderData.totalFiles}</div>
-                        </Card>
-
-                        {/* 3. Detected Formats */}
-                        <Card className="col-span-3 bg-stone-900 border-stone-800 p-10 flex flex-col items-center justify-center text-center">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mb-6 block leading-none">Detected Formats</label>
-                            <div className="flex flex-wrap gap-2 justify-center">
+                        {/* Formats - right of product folder */}
+                        <Card className="col-span-2 bg-stone-900/50 border-stone-800/60 !pl-6 !pr-10 py-6 rounded-none">
+                            <label className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-4 block">Detected Formats</label>
+                            <div className="flex flex-wrap gap-4 justify-center items-center">
                                 {Object.entries(folderData.fileTypes).map(([ext, count]) => (
-                                    <Badge key={ext} variant="secondary" className="px-4 py-1.5 bg-stone-800 border-stone-700 text-stone-200 text-[10px] font-bold">
+                                    <span key={ext} className="inline-flex items-center justify-center border px-6 py-2 bg-stone-800/80 border-stone-700/50 text-stone-300 text-sm font-medium rounded-sm">
                                         .{ext.toUpperCase()} ({count})
-                                    </Badge>
+                                    </span>
                                 ))}
                             </div>
                         </Card>
-
-                        {/* 4. Total Size */}
-                        <Card className="col-span-3 bg-stone-900 border-stone-800 p-10 flex flex-col items-center justify-center text-center">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500 mb-6 block leading-none">Library Weight</label>
-                            <div className="flex flex-col items-center">
-                                <h4 className="text-3xl font-black text-stone-200 leading-none">{sizeGB} <span className="text-sm font-bold text-stone-700 ml-1">GB</span></h4>
-                            </div>
-                        </Card>
-
-                        {/* 5. Product Title Input */}
-                        <Card className="col-span-6 bg-stone-900 border-stone-800 p-10 flex flex-col items-center">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-6 block leading-none">Listing Title (Optimized)</label>
-                            <Input
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="bg-stone-950 border-stone-800 h-16 text-lg font-black tracking-tight px-6 focus-visible:ring-primary/20 text-center"
-                            />
-                        </Card>
-
-                        {/* 6. AI Instructions */}
-                        <Card className="col-span-6 bg-stone-900 border-stone-800 p-10 flex flex-col items-center">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-6 block leading-none">Instruction Overwrite</label>
-                            <Textarea
-                                value={specialInstructions}
-                                onChange={(e) => setSpecialInstructions(e.target.value)}
-                                className="bg-stone-950 border-stone-800 resize-none h-40 p-6 text-stone-300 font-medium leading-relaxed focus-visible:ring-primary/20 text-center"
-                                placeholder="Add specific technical details, printer recommendations, or artist credits..."
-                            />
-                        </Card>
                     </div>
+
+                    {/* Title Input */}
+                    <Card className="bg-stone-900/50 border-stone-800/60 !pl-6 !pr-10 py-6 rounded-none">
+                        <label className="text-xs font-bold uppercase tracking-wider text-primary mb-4 block">Listing Title</label>
+                        <Input
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="bg-stone-950 border-stone-800 h-12 text-base font-semibold tracking-tight focus-visible:ring-primary/20 rounded-none"
+                        />
+                    </Card>
+
+                    {/* AI Instructions */}
+                    <Card className="bg-stone-900/50 border-stone-800/60 !pl-6 !pr-10 py-6 rounded-none">
+                        <label className="text-xs font-bold uppercase tracking-wider text-primary mb-4 block">AI Instructions</label>
+                        <Textarea
+                            value={specialInstructions}
+                            onChange={(e) => setSpecialInstructions(e.target.value)}
+                            className="bg-stone-950 border-stone-800 resize-none h-28 p-4 text-stone-300 font-medium leading-relaxed focus-visible:ring-primary/20 rounded-none"
+                            placeholder="Add specific technical details, printer recommendations, or artist credits..."
+                        />
+                    </Card>
                 </TabsContent>
 
-                <TabsContent value="description" className="m-0 pt-10">
-                    <Card className="bg-stone-900 border-stone-800 h-full">
-                        <CardHeader className="flex flex-row items-center justify-between p-10 pb-6">
+                <TabsContent value="description" className="m-0">
+                    <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                        <CardHeader className="flex flex-row items-center justify-between p-6 border-b border-stone-800/40">
                             <div>
-                                <CardTitle className="text-base font-black uppercase tracking-[0.15em]">Product Description</CardTitle>
-                                <CardDescription className="text-xs font-medium text-stone-500">Generated Etsy content</CardDescription>
+                                <CardTitle className="text-sm font-bold uppercase tracking-widest">Product Description</CardTitle>
+                                <CardDescription className="text-xs font-medium text-stone-500 mt-1">Generated Etsy content</CardDescription>
                             </div>
-                            <Button onClick={handleRegenerateAI} disabled={isRegenerating} variant="outline" className="border-primary text-primary hover:bg-primary/10 h-10 px-6 text-[11px] font-black uppercase tracking-widest transition-all">
-                                {isRegenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                                Regenerate AI
+                            <Button onClick={handleRegenerateAI} disabled={isRegenerating} variant="outline" className="border-primary/40 text-primary hover:bg-primary/10 h-9 !px-6 text-[10px] font-bold uppercase tracking-wider rounded-none">
+                                {isRegenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Sparkles className="w-3.5 h-3.5 mr-2" />}
+                                Regenerate
                             </Button>
                         </CardHeader>
-                        <CardContent className="px-10 pb-10">
+                        <CardContent className="p-6">
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                className="bg-stone-950 border-stone-800 font-mono text-sm min-h-[400px]"
+                                className="bg-stone-950 border-stone-800 font-mono text-sm min-h-[400px] rounded-none"
                             />
                         </CardContent>
                     </Card>
                 </TabsContent>
 
                 {/* --- IMAGES / WATERMARK TAB --- */}
-                <TabsContent value="images" className="space-y-6 m-0">
-                    <div className="grid grid-cols-3 gap-6">
-                        {/* Process Section */}
-                        <div className="col-span-2 space-y-6">
-                            <Card className="bg-stone-900 border-stone-800">
-                                <CardHeader>
-                                    <CardTitle className="text-sm font-bold uppercase tracking-widest">Watermark Removal Pro</CardTitle>
-                                    <CardDescription className="text-xs">Queue images to clean them of watermarks</CardDescription>
+                <TabsContent value="images" className="m-0 flex flex-col gap-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Main Processing Section */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                                <CardHeader className="!pl-6 !pr-10 py-5 border-b border-stone-800/40">
+                                    <CardTitle className="text-sm font-bold uppercase tracking-widest">Watermark Removal</CardTitle>
+                                    <CardDescription className="text-xs font-medium text-stone-500">Queue images for AI processing</CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-6">
-                                    {/* Drop Target */}
+                                <CardContent className="!pl-6 !pr-10 py-6 space-y-6">
+                                    {/* Upload Zone */}
                                     <div
-                                        className="border-2 border-dashed border-stone-800 bg-stone-950/50 p-10 text-center hover:border-primary transition-colors cursor-pointer"
+                                        className="border-2 border-dashed border-stone-800 bg-stone-950/50 p-10 text-center hover:border-primary/50 transition-colors cursor-pointer rounded-none"
                                         onClick={() => document.getElementById("watermark-upload")?.click()}
                                     >
                                         <input
@@ -471,24 +474,31 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                                         <div className="bg-stone-900 w-12 h-12 flex items-center justify-center mx-auto mb-4 border border-stone-800">
                                             <Download className="w-6 h-6 text-stone-500" />
                                         </div>
-                                        <p className="text-xs font-bold uppercase text-stone-200 tracking-tight">Click or Drag images here</p>
-                                        <p className="text-[10px] text-stone-500 uppercase mt-2">JPG, PNG, WebP • AI Powered</p>
+                                        <p className="text-sm font-bold uppercase text-stone-300 tracking-wide">Click or drag images</p>
+                                        <p className="text-xs text-stone-500 mt-2">JPG, PNG, WebP</p>
                                     </div>
 
                                     {/* Queue */}
                                     {uploadedImages.length > 0 && (
                                         <div className="space-y-4">
-                                            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-stone-500">
-                                                <span>Queue ({uploadedImages.length})</span>
-                                                <button onClick={() => setUploadedImages([])} className="text-destructive hover:underline">Clear</button>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-bold uppercase tracking-wider text-stone-500">Queue ({uploadedImages.length})</span>
+                                                <button onClick={() => setUploadedImages([])} className="text-xs font-medium text-destructive hover:underline">Clear</button>
                                             </div>
-                                            <div className="grid grid-cols-5 gap-2">
+                                            <div className="grid grid-cols-5 gap-3">
                                                 {uploadedImages.map((img, idx) => (
                                                     <div key={idx} className="relative aspect-square border border-stone-800 bg-stone-950 overflow-hidden group">
-                                                        <img src={img.base64} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
+                                                        <img 
+                                                            src={img.base64} 
+                                                            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity cursor-pointer" 
+                                                            onClick={() => setPreviewImage(img.base64)}
+                                                        />
+                                                        <div className="absolute inset-0 bg-stone-950/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity pointer-events-none">
+                                                            <Eye className="w-4 h-4 text-white" />
+                                                        </div>
                                                         <button
                                                             onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== idx))}
-                                                            className="absolute top-1 right-1 bg-stone-950/80 p-1 text-white opacity-0 group-hover:opacity-100"
+                                                            className="absolute top-1 right-1 bg-stone-950/80 p-1 text-white opacity-0 group-hover:opacity-100 z-10"
                                                         >
                                                             <X className="w-3 h-3" />
                                                         </button>
@@ -496,7 +506,7 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                                                 ))}
                                             </div>
                                             <Button
-                                                className="w-full font-bold uppercase tracking-tight"
+                                                className="w-full h-11 font-bold uppercase tracking-wider text-xs rounded-none !px-8"
                                                 onClick={handleBatchWatermarkRemoval}
                                                 disabled={isProcessingWatermarks}
                                             >
@@ -506,7 +516,7 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                                             {isProcessingWatermarks && (
                                                 <div className="space-y-2">
                                                     <Progress value={(watermarkProgress.current / watermarkProgress.total) * 100} className="h-1 bg-stone-800" />
-                                                    <p className="text-[10px] text-center text-stone-500 font-bold uppercase">Processing Image {watermarkProgress.current} unit...</p>
+                                                    <p className="text-xs text-center text-stone-500 font-medium">Processing {watermarkProgress.current}/{watermarkProgress.total}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -514,17 +524,32 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
 
                                     {/* Results */}
                                     {processedImages.length > 0 && (
-                                        <div className="space-y-4 pt-4 border-t border-stone-800">
-                                            <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                                                <div className="w-2 h-2 bg-primary animate-pulse" /> Final Results
-                                            </CardTitle>
+                                        <div className="space-y-4 pt-4 border-t border-stone-800/40">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 bg-primary rounded-full" />
+                                                <span className="text-xs font-bold uppercase tracking-wider text-stone-400">Results ({processedImages.length})</span>
+                                                <span className="text-[10px] text-stone-600 ml-2">Click to compare</span>
+                                            </div>
                                             <div className="grid grid-cols-4 gap-3">
                                                 {processedImages.map((img, idx) => (
-                                                    <div key={idx} className="relative aspect-square border border-primary/20 bg-stone-950 overflow-hidden group">
+                                                    <div 
+                                                        key={idx} 
+                                                        className="relative aspect-square border border-primary/20 bg-stone-950 overflow-hidden group cursor-pointer"
+                                                        onClick={() => setComparisonPreview({ before: img.original, after: img.url })}
+                                                    >
                                                         <img src={img.url} className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-stone-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 hover:text-primary"><Download className="w-4 h-4" /></Button>
-                                                            <Button onClick={() => setProcessedImages(prev => prev.filter((_, i) => i !== idx))} size="icon" variant="ghost" className="h-8 w-8 hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                                                        {/* Hover overlay */}
+                                                        <div className="absolute inset-0 bg-stone-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                            <Eye className="w-6 h-6 text-white" />
+                                                        </div>
+                                                        {/* Action buttons */}
+                                                        <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-stone-950/80 hover:text-primary" onClick={(e) => { e.stopPropagation(); /* download */ }}><Download className="w-3 h-3" /></Button>
+                                                            <Button onClick={(e) => { e.stopPropagation(); setProcessedImages(prev => prev.filter((_, i) => i !== idx)); }} size="icon" variant="ghost" className="h-6 w-6 bg-stone-950/80 hover:text-destructive"><Trash2 className="w-3 h-3" /></Button>
+                                                        </div>
+                                                        <div className="absolute top-1 left-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-stone-950/80 hover:text-green-500" onClick={(e) => { e.stopPropagation(); setVideoStartImage(img.url); }} title="Set as First Frame"><ChevronFirst className="w-3 h-3" /></Button>
+                                                            <Button size="icon" variant="ghost" className="h-6 w-6 bg-stone-950/80 hover:text-blue-500" onClick={(e) => { e.stopPropagation(); setVideoEndImage(img.url); }} title="Set as Last Frame"><ChevronLast className="w-3 h-3" /></Button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -535,154 +560,186 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                             </Card>
                         </div>
 
-                        {/* Source Column */}
-                        <div className="space-y-6">
-                            <Card className="bg-stone-900 border-stone-800">
-                                <CardHeader className="pb-3">
-                                    <div className="flex justify-between items-center">
-                                        <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Source Folder</CardTitle>
-                                        <Button
-                                            variant="link"
-                                            className="h-auto p-0 text-[10px] uppercase font-bold text-primary"
-                                            onClick={() => images.forEach((img, idx) => addFolderImageToQueue(img, idx))}
+                        {/* Source Images Sidebar */}
+                        <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                            <CardHeader className="!pl-6 !pr-10 py-5 border-b border-stone-800/40">
+                                <div className="flex justify-between items-center">
+                                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-stone-500">Source Folder</CardTitle>
+                                    <Button
+                                        variant="link"
+                                        className="h-auto p-0 text-xs uppercase font-bold text-primary"
+                                        onClick={() => images.forEach((img, idx) => addFolderImageToQueue(img, idx))}
+                                    >
+                                        Add All
+                                    </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-4 max-h-[500px] overflow-y-auto custom-scrollbar space-y-3">
+                                {loadingImages ? (
+                                    <div className="flex justify-center py-8 text-stone-600"><Loader2 className="animate-spin w-5 h-5" /></div>
+                                ) : images.map((img, idx) => (
+                                    <div key={idx} className="flex gap-4 bg-stone-950/50 border border-stone-800/60 p-3 group hover:border-primary/30 transition-colors">
+                                        <div 
+                                            className="w-14 h-14 bg-stone-900 flex-shrink-0 overflow-hidden cursor-pointer relative"
+                                            onClick={() => setPreviewImage(img)}
                                         >
-                                            Add All
-                                        </Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-2 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
-                                    {loadingImages ? (
-                                        <div className="flex justify-center py-10 text-stone-600"><Loader2 className="animate-spin w-5 h-5" /></div>
-                                    ) : images.map((img, idx) => (
-                                        <div key={idx} className="flex gap-3 bg-stone-950 border border-stone-800 p-2 group hover:border-primary/50 transition-colors">
-                                            <div className="w-12 h-12 bg-stone-900 flex-shrink-0 overflow-hidden">
-                                                <img src={img} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] font-bold text-stone-300 truncate tracking-tight uppercase">Product {idx + 1}</p>
-                                                <button
-                                                    onClick={() => addFolderImageToQueue(img, idx)}
-                                                    className="flex items-center gap-1 text-[9px] font-bold uppercase text-stone-500 hover:text-primary mt-1"
-                                                >
-                                                    <Plus className="w-2.5 h-2.5" /> Push to Queue
-                                                </button>
+                                            <img src={img} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-stone-950/50 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <Eye className="w-4 h-4 text-white" />
                                             </div>
                                         </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                            <p className="text-xs font-medium text-stone-400 truncate">Image {idx + 1}</p>
+                                            <button
+                                                onClick={() => addFolderImageToQueue(img, idx)}
+                                                className="flex items-center gap-1.5 text-[10px] font-medium text-stone-500 hover:text-primary"
+                                            >
+                                                <Plus className="w-3 h-3" /> Add to queue
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
                     </div>
                 </TabsContent>
 
                 {/* --- VIDEO TAB --- */}
-                <TabsContent value="video" className="m-0 space-y-6">
-                    <div className="grid grid-cols-3 gap-6">
-                        <div className="col-span-2 space-y-6">
-                            <Card className="bg-stone-900 border-stone-800">
-                                <CardHeader>
+                <TabsContent value="video" className="m-0 flex flex-col gap-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Main Video Section */}
+                        <div className="lg:col-span-2">
+                            <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                                <CardHeader className="p-5 border-b border-stone-800/40">
                                     <div className="flex justify-between items-center">
                                         <div>
-                                            <CardTitle className="text-sm font-bold uppercase tracking-widest">WanVideo I2V</CardTitle>
-                                            <CardDescription className="text-xs">Generate a 360° showcase video</CardDescription>
+                                            <CardTitle className="text-xs font-bold uppercase tracking-widest">Video Generator</CardTitle>
+                                            <CardDescription className="text-[10px] font-medium text-stone-500">Create 360° showcase video</CardDescription>
                                         </div>
-                                        <Badge variant="outline" className="border-primary text-primary text-[10px] font-bold px-3">WAN 2.1</Badge>
+                                        <Badge variant="outline" className="border-primary/40 text-primary text-[9px] font-bold px-2 rounded-sm">WAN 2.1</Badge>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="space-y-6">
-                                    {/* Preview Area */}
+                                <CardContent className="p-5 space-y-5">
+                                    {/* Frame Previews */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">First Frame</p>
-                                            <div className="aspect-square bg-stone-950 border border-stone-800 flex items-center justify-center overflow-hidden">
+                                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Start Frame</label>
+                                            <div className="aspect-square bg-stone-950 border border-stone-800 flex items-center justify-center overflow-hidden relative group">
                                                 {videoStartImage ? (
-                                                    <img src={videoStartImage} className="w-full h-full object-cover" />
+                                                    <>
+                                                        <img 
+                                                            src={videoStartImage} 
+                                                            className="w-full h-full object-cover cursor-pointer" 
+                                                            onClick={() => setPreviewImage(videoStartImage)}
+                                                        />
+                                                        <div className="absolute inset-0 bg-stone-950/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                                                            <Eye className="w-6 h-6 text-white" />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setVideoStartImage(null)}
+                                                            className="absolute top-2 right-2 bg-stone-950/80 p-1.5 text-white opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity z-10"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </>
                                                 ) : (
-                                                    <Monitor className="w-8 h-8 text-stone-800" />
+                                                    <Monitor className="w-6 h-6 text-stone-700" />
                                                 )}
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Last Frame</p>
-                                            <div className="aspect-square bg-stone-950 border border-stone-800 flex items-center justify-center overflow-hidden">
+                                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">End Frame</label>
+                                            <div className="aspect-square bg-stone-950 border border-stone-800 flex items-center justify-center overflow-hidden relative group">
                                                 {videoEndImage ? (
-                                                    <img src={videoEndImage} className="w-full h-full object-cover" />
+                                                    <>
+                                                        <img 
+                                                            src={videoEndImage} 
+                                                            className="w-full h-full object-cover cursor-pointer" 
+                                                            onClick={() => setPreviewImage(videoEndImage)}
+                                                        />
+                                                        <div className="absolute inset-0 bg-stone-950/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                                                            <Eye className="w-6 h-6 text-white" />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setVideoEndImage(null)}
+                                                            className="absolute top-2 right-2 bg-stone-950/80 p-1.5 text-white opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity z-10"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </>
                                                 ) : (
-                                                    <Monitor className="w-8 h-8 text-stone-800" />
+                                                    <Monitor className="w-6 h-6 text-stone-700" />
                                                 )}
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Config Grid */}
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Width</label>
-                                            <Input type="number" value={videoWidth} onChange={(e) => setVideoWidth(parseInt(e.target.value))} className="bg-stone-950 border-stone-800 h-10" />
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Width</label>
+                                            <Input type="number" value={videoWidth} onChange={(e) => setVideoWidth(parseInt(e.target.value))} className="bg-stone-950 border-stone-800 h-9 text-sm rounded-none" />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Height</label>
-                                            <Input type="number" value={videoHeight} onChange={(e) => setVideoHeight(parseInt(e.target.value))} className="bg-stone-950 border-stone-800 h-10" />
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Height</label>
+                                            <Input type="number" value={videoHeight} onChange={(e) => setVideoHeight(parseInt(e.target.value))} className="bg-stone-950 border-stone-800 h-9 text-sm rounded-none" />
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Frames</label>
-                                            <Input type="number" value={videoFrames} onChange={(e) => setVideoFrames(parseInt(e.target.value))} className="bg-stone-950 border-stone-800 h-10" />
+                                        <div className="space-y-1.5">
+                                            <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Frames</label>
+                                            <Input type="number" value={videoFrames} onChange={(e) => setVideoFrames(parseInt(e.target.value))} className="bg-stone-950 border-stone-800 h-9 text-sm rounded-none" />
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Video Prompt</label>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[9px] font-bold text-stone-500 uppercase tracking-wider">Prompt</label>
                                         <Textarea
                                             value={videoPrompt}
                                             onChange={(e) => setVideoPrompt(e.target.value)}
-                                            className="bg-stone-950 border-stone-800 h-20 resize-none text-xs"
+                                            className="bg-stone-950 border-stone-800 h-16 resize-none text-xs rounded-none"
                                         />
                                     </div>
 
                                     <div className="flex gap-2">
                                         <Button
-                                            className="grow h-12 font-bold uppercase tracking-widest relative overflow-hidden"
+                                            className="flex-1 h-10 font-bold uppercase tracking-wider text-[10px] rounded-none !px-8"
                                             onClick={handleGenerateVideo}
                                             disabled={isGeneratingVideo}
                                         >
                                             {isGeneratingVideo ? (
                                                 <>
-                                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                                    Generating... ({formatTime(videoTimer)})
-                                                    <div className="absolute bottom-0 left-0 h-1 bg-primary/30 animate-pulse w-full" />
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+                                                    Generating ({formatTime(videoTimer)})
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Play className="w-4 h-4 mr-2" />
-                                                    Generate Video Content
+                                                    <Play className="w-3.5 h-3.5 mr-2" />
+                                                    Generate Video
                                                 </>
                                             )}
                                         </Button>
-
                                         {isGeneratingVideo && (
                                             <Button
                                                 variant="destructive"
-                                                className="w-12 h-12 p-0"
+                                                className="w-10 h-10 p-0 rounded-none"
                                                 onClick={handleCancelVideo}
-                                                title="Cancel Generation"
                                             >
-                                                <X className="w-5 h-5" />
+                                                <X className="w-4 h-4" />
                                             </Button>
                                         )}
                                     </div>
 
                                     {generatedVideoUrl && (
-                                        <div className="pt-6 border-t border-stone-800 space-y-4">
+                                        <div className="pt-5 border-t border-stone-800/40 space-y-3">
                                             <div className="flex justify-between items-center">
-                                                <CardTitle className="text-xs font-bold uppercase tracking-widest">Output Video</CardTitle>
-                                                <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold" onClick={() => window.open(generatedVideoUrl)}>
-                                                    <Download className="w-3 h-3 mr-1" /> Open Source
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Output</span>
+                                                <Button size="sm" variant="outline" className="h-7 text-[10px] font-medium rounded-none" onClick={() => window.open(generatedVideoUrl)}>
+                                                    <Download className="w-3 h-3 mr-1" /> Open
                                                 </Button>
                                             </div>
                                             <video
                                                 src={generatedVideoUrl}
                                                 controls
-                                                className="w-full border border-primary/20 shadow-lg shadow-primary/5"
+                                                className="w-full border border-primary/20"
                                             />
                                         </div>
                                     )}
@@ -690,55 +747,60 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                             </Card>
                         </div>
 
-                        {/* Image Picker */}
-                        <div className="space-y-6">
-                            <Card className="bg-stone-900 border-stone-800">
-                                <CardHeader>
-                                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Pick Frames</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {images.map((img, idx) => (
-                                        <div key={idx} className="group bg-stone-950 border border-stone-800 p-2 space-y-2">
-                                            <div className="aspect-video overflow-hidden">
-                                                <img src={img} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all" />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    className="h-7 text-[9px] font-bold uppercase"
-                                                    onClick={() => setVideoStartImage(img)}
-                                                >
-                                                    Set Start
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    className="h-7 text-[9px] font-bold uppercase"
-                                                    onClick={() => setVideoEndImage(img)}
-                                                >
-                                                    Set End
-                                                </Button>
+                        {/* Frame Picker Sidebar */}
+                        <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                            <CardHeader className="p-4 border-b border-stone-800/40">
+                                <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Select Frames</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-3 max-h-[600px] overflow-y-auto custom-scrollbar space-y-3">
+                                {images.map((img, idx) => (
+                                    <div key={idx} className="group bg-stone-950/50 border border-stone-800/60 p-2 space-y-2">
+                                        <div 
+                                            className="aspect-video overflow-hidden cursor-pointer relative"
+                                            onClick={() => setPreviewImage(img)}
+                                        >
+                                            <img src={img} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-stone-950/50 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <Eye className="w-5 h-5 text-white" />
                                             </div>
                                         </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="h-7 text-[9px] font-bold uppercase rounded-none"
+                                                onClick={() => setVideoStartImage(img)}
+                                            >
+                                                Start
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="secondary"
+                                                className="h-7 text-[9px] font-bold uppercase rounded-none"
+                                                onClick={() => setVideoEndImage(img)}
+                                            >
+                                                End
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
                     </div>
                 </TabsContent>
 
                 {/* --- PUBLISH TAB --- */}
-                <TabsContent value="publish" className="m-0 space-y-6">
-                    <Card className="bg-stone-900 border-stone-800">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-bold uppercase tracking-widest">SEO Meta Tags</CardTitle>
-                            <CardDescription className="text-xs">{tags.length}/13 Tags used</CardDescription>
+                <TabsContent value="publish" className="m-0 flex flex-col gap-10">
+                    {/* Tags Card */}
+                    <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                        <CardHeader className="p-5 border-b border-stone-800/40">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest">SEO Tags</CardTitle>
+                            <CardDescription className="text-[10px] font-medium text-stone-500">{tags.length}/13 tags used</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="p-5 space-y-4">
                             <div className="flex flex-wrap gap-2">
                                 {tags.map((tag) => (
-                                    <Badge key={tag} className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all flex gap-2 h-7 rounded-none">
+                                    <Badge key={tag} className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-colors flex gap-2 h-7 rounded-sm text-[10px] font-medium">
                                         {tag}
                                         <button onClick={() => setTags(prev => prev.filter(t => t !== tag))}><X className="w-3 h-3" /></button>
                                     </Badge>
@@ -746,36 +808,144 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                             </div>
                             <div className="flex gap-2">
                                 <Input
-                                    placeholder="Enter new search tag..."
-                                    className="bg-stone-950 border-stone-800"
+                                    placeholder="Add new tag..."
+                                    className="bg-stone-950 border-stone-800 rounded-none"
                                     value={newTag}
                                     onChange={(e) => setNewTag(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && (setTags([...tags, newTag]), setNewTag(""))}
+                                    onKeyDown={(e) => e.key === "Enter" && newTag.trim() && (setTags([...tags, newTag.trim()]), setNewTag(""))}
                                 />
-                                <Button className="bg-stone-800 border-stone-700 hover:bg-stone-700" onClick={() => (setTags([...tags, newTag]), setNewTag(""))}>
-                                    <Plus className="w-4 h-4 mr-1" /> Add
+                                <Button 
+                                    className="bg-stone-800 hover:bg-stone-700 rounded-none" 
+                                    onClick={() => newTag.trim() && (setTags([...tags, newTag.trim()]), setNewTag(""))}
+                                >
+                                    <Plus className="w-4 h-4" />
                                 </Button>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-stone-900 border-stone-800 overflow-hidden ring-1 ring-primary/20">
-                        <div className="h-1 bg-primary w-full" />
-                        <CardHeader>
-                            <CardTitle className="text-sm font-bold uppercase tracking-widest">Final Actions</CardTitle>
-                            <CardDescription className="text-xs">Connect your shop in settings to enable direct publishing</CardDescription>
+                    {/* Actions Card */}
+                    <Card className="bg-stone-900/50 border-stone-800/60 rounded-none overflow-hidden border-t-2 border-t-primary">
+                        <CardHeader className="p-5">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest">Publish Actions</CardTitle>
+                            <CardDescription className="text-[10px] font-medium text-stone-500">Connect your shop in settings to enable</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-4 pb-8">
-                            <Button variant="outline" className="h-14 font-bold uppercase tracking-widest opacity-50 cursor-not-allowed">
-                                Save Local Copy
+                        <CardContent className="p-5 pt-0 grid grid-cols-2 gap-4">
+                            <Button variant="outline" className="h-12 font-bold uppercase tracking-wider text-[10px] rounded-none opacity-50 cursor-not-allowed !px-10">
+                                Save Local
                             </Button>
-                            <Button className="h-14 font-bold uppercase tracking-widest opacity-50 cursor-not-allowed">
-                                Ship to Marketplace
+                            <Button className="h-12 font-bold uppercase tracking-wider text-[10px] rounded-none opacity-50 cursor-not-allowed !px-10">
+                                Publish
                             </Button>
                         </CardContent>
                     </Card>
+
+                    {/* Legal Footer */}
+                    <div className="p-5 bg-stone-900/30 border border-stone-800/40 text-[9px] space-y-3 font-medium leading-relaxed">
+                        <p className="text-stone-500">
+                            The term 'Etsy' is a trademark of Etsy, Inc. This Application uses the Etsy API but is not endorsed or certified by Etsy.
+                        </p>
+                        <Separator className="bg-stone-800/40" />
+                        <p className="text-stone-600">
+                            DISCLAIMER: This application is provided exclusively by Amari Luigi. Etsy, Inc. and its affiliates are not the developer of this application and do not provide any warranties regarding the application or data accessed through it.
+                        </p>
+                    </div>
                 </TabsContent>
             </div>
+
+            {/* Image Preview Modal */}
+            {previewImage && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-8"
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="absolute top-4 right-4 h-10 w-10 text-white hover:text-primary"
+                        onClick={() => setPreviewImage(null)}
+                    >
+                        <X className="w-6 h-6" />
+                    </Button>
+                    <img 
+                        src={previewImage} 
+                        className="max-w-full max-h-full object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
+
+            {/* Comparison Preview Modal */}
+            {comparisonPreview && (
+                <div 
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-8"
+                    onClick={() => { setComparisonPreview(null); setComparisonPosition(50); }}
+                >
+                    <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="absolute top-4 right-4 h-10 w-10 text-white hover:text-primary z-20"
+                        onClick={() => { setComparisonPreview(null); setComparisonPosition(50); }}
+                    >
+                        <X className="w-6 h-6" />
+                    </Button>
+                    
+                    {/* Labels */}
+                    <div className="absolute top-4 left-4 px-3 py-1.5 bg-stone-950/80 text-xs font-bold uppercase text-stone-400 z-20">
+                        Before
+                    </div>
+                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 px-3 py-1.5 bg-stone-950/80 text-xs font-bold uppercase text-primary z-20">
+                        Move mouse to compare
+                    </div>
+                    <div className="absolute top-4 right-16 px-3 py-1.5 bg-stone-950/80 text-xs font-bold uppercase text-stone-400 z-20">
+                        After
+                    </div>
+                    
+                    {/* Comparison container */}
+                    <div 
+                        className="relative max-w-full max-h-full overflow-hidden cursor-col-resize"
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            const percentage = (x / rect.width) * 100;
+                            setComparisonPosition(Math.min(100, Math.max(0, percentage)));
+                        }}
+                    >
+                        {/* After image (full) */}
+                        <img 
+                            src={comparisonPreview.after} 
+                            className="max-w-[80vw] max-h-[80vh] object-contain"
+                            draggable={false}
+                        />
+                        
+                        {/* Before image (clipped) */}
+                        <div 
+                            className="absolute inset-0 overflow-hidden"
+                            style={{ width: `${comparisonPosition}%` }}
+                        >
+                            <img 
+                                src={comparisonPreview.before} 
+                                className="max-w-[80vw] max-h-[80vh] object-contain"
+                                draggable={false}
+                            />
+                        </div>
+                        
+                        {/* Divider line */}
+                        <div 
+                            className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg z-10"
+                            style={{ left: `${comparisonPosition}%` }}
+                        >
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+                                <div className="flex gap-0.5">
+                                    <ChevronFirst className="w-3 h-3 text-stone-900" />
+                                    <ChevronLast className="w-3 h-3 text-stone-900" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Tabs>
     )
 }

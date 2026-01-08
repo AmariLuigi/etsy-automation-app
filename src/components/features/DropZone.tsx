@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -54,36 +54,21 @@ export default function DropZone({ onFolderSelect, isDragging, onDragStateChange
     }
 
     return (
-        <div className="w-full max-w-2xl mx-auto py-12">
+        <div className="w-full max-w-xl mx-auto px-4">
             <Card
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={cn(
-                    "relative group transition-all duration-300 border-2 border-dashed h-[300px] flex flex-col items-center justify-center bg-stone-900/40",
-                    isDragging ? "border-primary bg-primary/5 scale-[1.02]" : "border-stone-800 hover:border-stone-700"
+                    "relative group transition-all duration-200 border-2 border-dashed flex flex-col items-center justify-center bg-stone-900/30 py-16 px-8",
+                    isDragging ? "border-primary bg-primary/5 scale-[1.01]" : "border-stone-800 hover:border-stone-700"
                 )}
             >
-                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                <div className="relative z-10 flex flex-col items-center text-center px-6">
-                    <div className={cn(
-                        "w-16 h-16 mb-6 flex items-center justify-center bg-stone-900 border border-stone-800 transition-all duration-300",
-                        isDragging ? "border-primary text-primary scale-110" : "text-stone-500 group-hover:text-stone-300"
-                    )}>
-                        {isLoading ? (
-                            <Loader2 className="w-6 h-6 animate-spin" />
-                        ) : isDragging ? (
-                            <Upload className="w-6 h-6 animate-bounce" />
-                        ) : (
-                            <FolderOpen className="w-6 h-6" />
-                        )}
-                    </div>
-
-                    <h2 className="text-xl font-bold uppercase tracking-widest text-white mb-2">
-                        {isDragging ? "Drop Product Folder" : "Initialize Workspace"}
+                <div className="relative z-10 flex flex-col items-center text-center px-4">
+                    <h2 className="text-lg font-bold uppercase tracking-widest text-white mb-3">
+                        {isDragging ? "Drop Folder" : "Initialize Workspace"}
                     </h2>
-                    <p className="text-sm text-stone-500 uppercase tracking-tight font-bold mb-8">
+                    <p className="text-[11px] text-stone-500 font-medium tracking-wide mb-8 max-w-xs leading-relaxed">
                         Select the root folder containing your product assets
                     </p>
 
@@ -91,29 +76,36 @@ export default function DropZone({ onFolderSelect, isDragging, onDragStateChange
                         onClick={handleSelectFolder}
                         disabled={isLoading}
                         size="lg"
-                        className="font-bold uppercase tracking-widest px-8 h-12"
+                        className="font-bold uppercase tracking-widest text-xs !px-16"
                     >
-                        {isLoading ? "Analyzing..." : "Browse Local Files"}
+                        {isLoading ? (
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        ) : isDragging ? (
+                            <Upload className="w-5 h-5 mr-2" />
+                        ) : (
+                            <FolderOpen className="w-5 h-5 mr-2" />
+                        )}
+                        {isLoading ? "Analyzing..." : "Browse Files"}
                     </Button>
                 </div>
 
-                {/* Corner Accents - Pure Stone Aesthetics */}
-                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-stone-800 group-hover:border-primary/50 transition-colors" />
-                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-stone-800 group-hover:border-primary/50 transition-colors" />
-                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-stone-800 group-hover:border-primary/50 transition-colors" />
-                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-stone-800 group-hover:border-primary/50 transition-colors" />
+                {/* Corner Accents */}
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-stone-800 group-hover:border-primary/40 transition-colors" />
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-stone-800 group-hover:border-primary/40 transition-colors" />
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-stone-800 group-hover:border-primary/40 transition-colors" />
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-stone-800 group-hover:border-primary/40 transition-colors" />
             </Card>
 
-            <div className="mt-8 grid grid-cols-3 gap-4">
+            {/* Feature Pills */}
+            <div className="mt-8 flex justify-center gap-4">
                 {[
-                    { icon: <Upload className="w-4 h-4" />, title: "Upload", desc: "Drag your folder" },
-                    { icon: <Activity className="w-4 h-4" />, title: "Scan", desc: "Auto-file detection" },
-                    { icon: <Sparkles className="w-4 h-4" />, title: "Enrich", desc: "AI metadata gen" },
+                    { icon: <Upload className="w-3.5 h-3.5" />, label: "Upload" },
+                    { icon: <Activity className="w-3.5 h-3.5" />, label: "Scan" },
+                    { icon: <Sparkles className="w-3.5 h-3.5" />, label: "AI Enrich" },
                 ].map((item, i) => (
-                    <div key={i} className="flex flex-col items-center p-4 bg-stone-900/20 border border-stone-800/50">
-                        <div className="text-stone-600 mb-2">{item.icon}</div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-stone-500">{item.title}</p>
-                        <p className="text-[9px] text-stone-600 uppercase mt-1">{item.desc}</p>
+                    <div key={i} className="flex items-center gap-2.5 px-4 py-2.5 bg-stone-900/40 border border-stone-800/50 text-stone-500">
+                        {item.icon}
+                        <span className="text-[10px] font-medium uppercase tracking-wide">{item.label}</span>
                     </div>
                 ))}
             </div>
