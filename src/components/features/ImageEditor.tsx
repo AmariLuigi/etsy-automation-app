@@ -13,13 +13,307 @@ import {
     AlignRight,
     Bold,
     Italic,
-    LayoutGrid,
     ChevronUp,
     ChevronDown,
     Copy,
     Lock,
-    Unlock
+    Unlock,
+    Grid,
+    Square
 } from "lucide-react"
+
+interface CollageSlot {
+    id: string
+    x: number // relative to collage element (0-1)
+    y: number
+    width: number // relative (0-1)
+    height: number
+    imageId?: string // linked image element id
+    imageSrc?: string
+    imageX: number // image position within slot
+    imageY: number
+    imageWidth: number
+    imageHeight: number
+    originalWidth?: number
+    originalHeight?: number
+}
+
+interface CollageTemplate {
+    id: string
+    name: string
+    slots: Omit<CollageSlot, 'id' | 'imageId' | 'imageSrc' | 'imageX' | 'imageY' | 'imageWidth' | 'imageHeight' | 'originalWidth' | 'originalHeight'>[]
+}
+
+const COLLAGE_TEMPLATES: CollageTemplate[] = [
+    {
+        id: 'grid-2x2',
+        name: '2x2 Grid',
+        slots: [
+            { x: 0, y: 0, width: 0.5, height: 0.5 },
+            { x: 0.5, y: 0, width: 0.5, height: 0.5 },
+            { x: 0, y: 0.5, width: 0.5, height: 0.5 },
+            { x: 0.5, y: 0.5, width: 0.5, height: 0.5 },
+        ]
+    },
+    {
+        id: 'grid-3x3',
+        name: '3x3 Grid',
+        slots: [
+            { x: 0, y: 0, width: 0.333, height: 0.333 },
+            { x: 0.333, y: 0, width: 0.334, height: 0.333 },
+            { x: 0.667, y: 0, width: 0.333, height: 0.333 },
+            { x: 0, y: 0.333, width: 0.333, height: 0.334 },
+            { x: 0.333, y: 0.333, width: 0.334, height: 0.334 },
+            { x: 0.667, y: 0.333, width: 0.333, height: 0.334 },
+            { x: 0, y: 0.667, width: 0.333, height: 0.333 },
+            { x: 0.333, y: 0.667, width: 0.334, height: 0.333 },
+            { x: 0.667, y: 0.667, width: 0.333, height: 0.333 },
+        ]
+    },
+    {
+        id: 'grid-2x3',
+        name: '2x3 Grid',
+        slots: [
+            { x: 0, y: 0, width: 0.5, height: 0.333 },
+            { x: 0.5, y: 0, width: 0.5, height: 0.333 },
+            { x: 0, y: 0.333, width: 0.5, height: 0.334 },
+            { x: 0.5, y: 0.333, width: 0.5, height: 0.334 },
+            { x: 0, y: 0.667, width: 0.5, height: 0.333 },
+            { x: 0.5, y: 0.667, width: 0.5, height: 0.333 },
+        ]
+    },
+    {
+        id: 'grid-4x4',
+        name: '4x4 Grid',
+        slots: [
+            { x: 0, y: 0, width: 0.25, height: 0.25 },
+            { x: 0.25, y: 0, width: 0.25, height: 0.25 },
+            { x: 0.5, y: 0, width: 0.25, height: 0.25 },
+            { x: 0.75, y: 0, width: 0.25, height: 0.25 },
+            { x: 0, y: 0.25, width: 0.25, height: 0.25 },
+            { x: 0.25, y: 0.25, width: 0.25, height: 0.25 },
+            { x: 0.5, y: 0.25, width: 0.25, height: 0.25 },
+            { x: 0.75, y: 0.25, width: 0.25, height: 0.25 },
+            { x: 0, y: 0.5, width: 0.25, height: 0.25 },
+            { x: 0.25, y: 0.5, width: 0.25, height: 0.25 },
+            { x: 0.5, y: 0.5, width: 0.25, height: 0.25 },
+            { x: 0.75, y: 0.5, width: 0.25, height: 0.25 },
+            { x: 0, y: 0.75, width: 0.25, height: 0.25 },
+            { x: 0.25, y: 0.75, width: 0.25, height: 0.25 },
+            { x: 0.5, y: 0.75, width: 0.25, height: 0.25 },
+            { x: 0.75, y: 0.75, width: 0.25, height: 0.25 },
+        ]
+    },
+    {
+        id: 'horizontal-2',
+        name: '2 Horizontal',
+        slots: [
+            { x: 0, y: 0, width: 0.5, height: 1 },
+            { x: 0.5, y: 0, width: 0.5, height: 1 },
+        ]
+    },
+    {
+        id: 'horizontal-3',
+        name: '3 Horizontal',
+        slots: [
+            { x: 0, y: 0, width: 0.333, height: 1 },
+            { x: 0.333, y: 0, width: 0.334, height: 1 },
+            { x: 0.667, y: 0, width: 0.333, height: 1 },
+        ]
+    },
+    {
+        id: 'horizontal-4',
+        name: '4 Horizontal',
+        slots: [
+            { x: 0, y: 0, width: 0.25, height: 1 },
+            { x: 0.25, y: 0, width: 0.25, height: 1 },
+            { x: 0.5, y: 0, width: 0.25, height: 1 },
+            { x: 0.75, y: 0, width: 0.25, height: 1 },
+        ]
+    },
+    {
+        id: 'vertical-2',
+        name: '2 Vertical',
+        slots: [
+            { x: 0, y: 0, width: 1, height: 0.5 },
+            { x: 0, y: 0.5, width: 1, height: 0.5 },
+        ]
+    },
+    {
+        id: 'vertical-3',
+        name: '3 Vertical',
+        slots: [
+            { x: 0, y: 0, width: 1, height: 0.333 },
+            { x: 0, y: 0.333, width: 1, height: 0.334 },
+            { x: 0, y: 0.667, width: 1, height: 0.333 },
+        ]
+    },
+    {
+        id: 'vertical-4',
+        name: '4 Vertical',
+        slots: [
+            { x: 0, y: 0, width: 1, height: 0.25 },
+            { x: 0, y: 0.25, width: 1, height: 0.25 },
+            { x: 0, y: 0.5, width: 1, height: 0.25 },
+            { x: 0, y: 0.75, width: 1, height: 0.25 },
+        ]
+    },
+    {
+        id: 'featured-left',
+        name: 'Featured Left',
+        slots: [
+            { x: 0, y: 0, width: 0.6, height: 1 },
+            { x: 0.6, y: 0, width: 0.4, height: 0.5 },
+            { x: 0.6, y: 0.5, width: 0.4, height: 0.5 },
+        ]
+    },
+    {
+        id: 'featured-right',
+        name: 'Featured Right',
+        slots: [
+            { x: 0, y: 0, width: 0.4, height: 0.5 },
+            { x: 0, y: 0.5, width: 0.4, height: 0.5 },
+            { x: 0.4, y: 0, width: 0.6, height: 1 },
+        ]
+    },
+    {
+        id: 'featured-top',
+        name: 'Featured Top',
+        slots: [
+            { x: 0, y: 0, width: 1, height: 0.6 },
+            { x: 0, y: 0.6, width: 0.5, height: 0.4 },
+            { x: 0.5, y: 0.6, width: 0.5, height: 0.4 },
+        ]
+    },
+    {
+        id: 'featured-bottom',
+        name: 'Featured Bottom',
+        slots: [
+            { x: 0, y: 0, width: 0.5, height: 0.4 },
+            { x: 0.5, y: 0, width: 0.5, height: 0.4 },
+            { x: 0, y: 0.4, width: 1, height: 0.6 },
+        ]
+    },
+    {
+        id: 'featured-center',
+        name: 'Featured Center',
+        slots: [
+            { x: 0, y: 0, width: 0.35, height: 0.5 },
+            { x: 0, y: 0.5, width: 0.35, height: 0.5 },
+            { x: 0.35, y: 0.15, width: 0.3, height: 0.7 },
+            { x: 0.65, y: 0, width: 0.35, height: 0.5 },
+            { x: 0.65, y: 0.5, width: 0.35, height: 0.5 },
+        ]
+    },
+    {
+        id: 'mosaic-1',
+        name: 'Mosaic A',
+        slots: [
+            { x: 0, y: 0, width: 0.5, height: 0.667 },
+            { x: 0.5, y: 0, width: 0.5, height: 0.333 },
+            { x: 0.5, y: 0.333, width: 0.5, height: 0.333 },
+            { x: 0, y: 0.667, width: 0.333, height: 0.333 },
+            { x: 0.333, y: 0.667, width: 0.333, height: 0.333 },
+            { x: 0.667, y: 0.667, width: 0.333, height: 0.333 },
+        ]
+    },
+    {
+        id: 'mosaic-2',
+        name: 'Mosaic B',
+        slots: [
+            { x: 0, y: 0, width: 0.667, height: 0.5 },
+            { x: 0.667, y: 0, width: 0.333, height: 0.5 },
+            { x: 0, y: 0.5, width: 0.333, height: 0.5 },
+            { x: 0.333, y: 0.5, width: 0.667, height: 0.5 },
+        ]
+    },
+    {
+        id: 'diagonal',
+        name: 'Diagonal',
+        slots: [
+            { x: 0, y: 0, width: 0.4, height: 0.4 },
+            { x: 0.3, y: 0.3, width: 0.4, height: 0.4 },
+            { x: 0.6, y: 0.6, width: 0.4, height: 0.4 },
+        ]
+    },
+    {
+        id: 'polaroid',
+        name: 'Polaroid Stack',
+        slots: [
+            { x: 0.05, y: 0.05, width: 0.5, height: 0.5 },
+            { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+            { x: 0.45, y: 0.45, width: 0.5, height: 0.5 },
+        ]
+    },
+    {
+        id: 't-shape',
+        name: 'T-Shape',
+        slots: [
+            { x: 0, y: 0, width: 0.333, height: 0.5 },
+            { x: 0.333, y: 0, width: 0.334, height: 0.5 },
+            { x: 0.667, y: 0, width: 0.333, height: 0.5 },
+            { x: 0.25, y: 0.5, width: 0.5, height: 0.5 },
+        ]
+    },
+    {
+        id: 'l-shape',
+        name: 'L-Shape',
+        slots: [
+            { x: 0, y: 0, width: 0.5, height: 0.5 },
+            { x: 0, y: 0.5, width: 0.5, height: 0.5 },
+            { x: 0.5, y: 0.5, width: 0.5, height: 0.5 },
+        ]
+    },
+    {
+        id: 'cross',
+        name: 'Cross',
+        slots: [
+            { x: 0.333, y: 0, width: 0.334, height: 0.333 },
+            { x: 0, y: 0.333, width: 0.333, height: 0.334 },
+            { x: 0.333, y: 0.333, width: 0.334, height: 0.334 },
+            { x: 0.667, y: 0.333, width: 0.333, height: 0.334 },
+            { x: 0.333, y: 0.667, width: 0.334, height: 0.333 },
+        ]
+    },
+    {
+        id: 'window',
+        name: 'Window',
+        slots: [
+            { x: 0.05, y: 0.05, width: 0.44, height: 0.44 },
+            { x: 0.51, y: 0.05, width: 0.44, height: 0.44 },
+            { x: 0.05, y: 0.51, width: 0.44, height: 0.44 },
+            { x: 0.51, y: 0.51, width: 0.44, height: 0.44 },
+        ]
+    },
+    {
+        id: 'filmstrip',
+        name: 'Film Strip',
+        slots: [
+            { x: 0.1, y: 0.05, width: 0.8, height: 0.28 },
+            { x: 0.1, y: 0.36, width: 0.8, height: 0.28 },
+            { x: 0.1, y: 0.67, width: 0.8, height: 0.28 },
+        ]
+    },
+    {
+        id: 'banner-top',
+        name: 'Banner Top',
+        slots: [
+            { x: 0, y: 0, width: 1, height: 0.35 },
+            { x: 0, y: 0.35, width: 0.333, height: 0.65 },
+            { x: 0.333, y: 0.35, width: 0.334, height: 0.65 },
+            { x: 0.667, y: 0.35, width: 0.333, height: 0.65 },
+        ]
+    },
+    {
+        id: 'gallery',
+        name: 'Gallery',
+        slots: [
+            { x: 0, y: 0.1, width: 0.333, height: 0.8 },
+            { x: 0.333, y: 0, width: 0.334, height: 1 },
+            { x: 0.667, y: 0.1, width: 0.333, height: 0.8 },
+        ]
+    },
+]
 
 interface TextElement {
     id: string
@@ -43,6 +337,7 @@ interface TextElement {
     outlineEnabled: boolean
     outlineColor: string
     outlineWidth: number
+    opacity: number
 }
 
 interface ImageElement {
@@ -55,9 +350,27 @@ interface ImageElement {
     height: number
     originalWidth: number
     originalHeight: number
+    opacity: number
 }
 
-type CanvasElement = TextElement | ImageElement
+interface CollageElement {
+    id: string
+    type: 'collage'
+    x: number
+    y: number
+    width: number
+    height: number
+    templateId: string
+    slots: CollageSlot[]
+    padding: number
+    borderRadius: number
+    backgroundColor: string
+    borderColor: string
+    borderWidth: number
+    opacity: number
+}
+
+type CanvasElement = TextElement | ImageElement | CollageElement
 
 const FONTS = [
     'Inter',
@@ -81,10 +394,13 @@ export default function ImageEditor() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const collageInputRef = useRef<HTMLInputElement>(null)
+    const imageCache = useRef<Map<string, HTMLImageElement>>(new Map())
+    const animationFrameRef = useRef<number | null>(null)
+    const elementsRef = useRef<CanvasElement[]>([])
 
     const [elements, setElements] = useState<CanvasElement[]>([])
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+    const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
     const [isResizing, setIsResizing] = useState(false)
     const [resizeHandle, setResizeHandle] = useState<string | null>(null)
@@ -97,7 +413,19 @@ export default function ImageEditor() {
     const [editingTextValue, setEditingTextValue] = useState('')
     const [lockAspectRatio, setLockAspectRatio] = useState(true)
     const [alignmentGuides, setAlignmentGuides] = useState<{ type: 'h' | 'v'; position: number }[]>([])
+    const [hoveredSlot, setHoveredSlot] = useState<{ collageId: string; slotId: string } | null>(null)
+    const [isDraggingSlotImage, setIsDraggingSlotImage] = useState(false)
+    const [slotImageDragStart, setSlotImageDragStart] = useState<{ x: number; y: number; imageX: number; imageY: number } | null>(null)
+    const [isTemplatesCollapsed, setIsTemplatesCollapsed] = useState(true)
+    const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+    const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
     const textInputRef = useRef<HTMLInputElement>(null)
+    const slotImageInputRef = useRef<HTMLInputElement>(null)
+
+    // Keep elementsRef in sync
+    useEffect(() => {
+        elementsRef.current = elements
+    }, [elements])
 
     const SNAP_THRESHOLD = 5 // pixels to snap to alignment
 
@@ -112,8 +440,8 @@ export default function ImageEditor() {
         }
     }
 
-    // Calculate alignment guides for an element being dragged
-    const calculateAlignmentGuides = (draggedEl: CanvasElement, newX: number, newY: number) => {
+    // Calculate alignment guides for an element being dragged (throttled)
+    const calculateAlignmentGuides = useCallback((draggedEl: CanvasElement, newX: number, newY: number) => {
         const guides: { type: 'h' | 'v'; position: number }[] = []
         const draggedWidth = draggedEl.type === 'image' ? draggedEl.width : (draggedEl as TextElement).width
         const draggedHeight = draggedEl.type === 'image' ? draggedEl.height : (draggedEl as TextElement).height
@@ -134,8 +462,8 @@ export default function ImageEditor() {
             guides.push({ type: 'h', position: CANVAS_HEIGHT / 2 })
         }
         
-        // Compare with other elements
-        elements.forEach(el => {
+        // Compare with other elements (use ref to avoid stale closure)
+        elementsRef.current.forEach(el => {
             if (el.id === draggedEl.id) return
             
             const elWidth = el.type === 'image' ? el.width : (el as TextElement).width
@@ -163,7 +491,7 @@ export default function ImageEditor() {
         })
         
         return guides
-    }
+    }, [])
 
     // Calculate canvas scale to fit container
     useEffect(() => {
@@ -192,7 +520,7 @@ export default function ImageEditor() {
             const y = (e.clientY - rect.top) / canvasScale
             
             if (isResizing && selectedElementId) {
-                const el = elements.find(e => e.id === selectedElementId)
+                const el = elementsRef.current.find(e => e.id === selectedElementId)
                 if (!el) return
                 
                 if (el.type === 'image') {
@@ -269,7 +597,6 @@ export default function ImageEditor() {
                     let newY = resizeStart.elY
                     
                     const dx = x - resizeStart.x
-                    const scale = Math.max(0.2, (resizeStart.width + dx) / resizeStart.width)
                     
                     switch (resizeHandle) {
                         case 'br':
@@ -304,7 +631,7 @@ export default function ImageEditor() {
                     }))
                 }
             } else if (isDragging && selectedElementId) {
-                const el = elements.find(e => e.id === selectedElementId)
+                const el = elementsRef.current.find(e => e.id === selectedElementId)
                 if (el) {
                     const newX = x - dragOffset.x
                     const newY = y - dragOffset.y
@@ -335,10 +662,28 @@ export default function ImageEditor() {
             window.removeEventListener('mousemove', handleGlobalMouseMove)
             window.removeEventListener('mouseup', handleGlobalMouseUp)
         }
-    }, [isDragging, isResizing, selectedElementId, canvasScale, resizeStart, resizeHandle, dragOffset, lockAspectRatio, elements])
+    }, [isDragging, isResizing, selectedElementId, canvasScale, resizeStart, resizeHandle, dragOffset, lockAspectRatio])
 
-    // Render canvas
-    const renderCanvas = useCallback(() => {
+    // Get or create cached image
+    const getCachedImage = useCallback((src: string): HTMLImageElement | null => {
+        if (imageCache.current.has(src)) {
+            return imageCache.current.get(src)!
+        }
+        const img = new Image()
+        img.src = src
+        img.onload = () => {
+            imageCache.current.set(src, img)
+            // Trigger re-render when image loads
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current)
+            }
+            animationFrameRef.current = requestAnimationFrame(renderCanvasInternal)
+        }
+        return null
+    }, [])
+
+    // Internal render function (no dependencies to avoid recreation)
+    const renderCanvasInternal = useCallback(() => {
         const canvas = canvasRef.current
         if (!canvas) return
         const ctx = canvas.getContext('2d')
@@ -350,13 +695,23 @@ export default function ImageEditor() {
 
         // Render elements in order
         elements.forEach(element => {
+            // Apply element opacity
+            ctx.save()
+            ctx.globalAlpha = element.opacity ?? 1
+            
             if (element.type === 'image') {
-                const img = new Image()
-                img.src = element.src
-                ctx.drawImage(img, element.x, element.y, element.width, element.height)
+                const cachedImg = imageCache.current.get(element.src)
+                if (cachedImg && cachedImg.complete) {
+                    ctx.drawImage(cachedImg, element.x, element.y, element.width, element.height)
+                } else {
+                    // Load image into cache
+                    getCachedImage(element.src)
+                    // Draw placeholder
+                    ctx.fillStyle = '#292524'
+                    ctx.fillRect(element.x, element.y, element.width, element.height)
+                }
+                ctx.restore()
             } else if (element.type === 'text') {
-                ctx.save()
-                
                 const fontStyle = `${element.italic ? 'italic ' : ''}${element.bold ? 'bold ' : ''}${element.fontSize}px ${element.fontFamily}`
                 ctx.font = fontStyle
                 ctx.textAlign = element.alignment
@@ -387,6 +742,106 @@ export default function ImageEditor() {
                 ctx.fillText(element.content, textX, element.y)
 
                 ctx.restore()
+            } else if (element.type === 'collage') {
+                const collage = element as CollageElement
+                
+                // Draw collage background
+                ctx.fillStyle = collage.backgroundColor
+                if (collage.borderRadius > 0) {
+                    ctx.beginPath()
+                    ctx.roundRect(collage.x, collage.y, collage.width, collage.height, collage.borderRadius)
+                    ctx.fill()
+                } else {
+                    ctx.fillRect(collage.x, collage.y, collage.width, collage.height)
+                }
+                
+                // Draw each slot
+                collage.slots.forEach(slot => {
+                    const slotX = collage.x + slot.x * collage.width + collage.padding
+                    const slotY = collage.y + slot.y * collage.height + collage.padding
+                    const slotWidth = slot.width * collage.width - collage.padding * 2
+                    const slotHeight = slot.height * collage.height - collage.padding * 2
+                    
+                    // Draw slot background/border
+                    ctx.strokeStyle = collage.borderColor
+                    ctx.lineWidth = collage.borderWidth
+                    if (collage.borderRadius > 0) {
+                        ctx.beginPath()
+                        ctx.roundRect(slotX, slotY, slotWidth, slotHeight, collage.borderRadius / 2)
+                        ctx.stroke()
+                    } else {
+                        ctx.strokeRect(slotX, slotY, slotWidth, slotHeight)
+                    }
+                    
+                    // Draw image if exists
+                    if (slot.imageSrc) {
+                        const cachedImg = imageCache.current.get(slot.imageSrc)
+                        if (cachedImg && cachedImg.complete) {
+                            ctx.save()
+                            // Clip to slot
+                            ctx.beginPath()
+                            if (collage.borderRadius > 0) {
+                                ctx.roundRect(slotX, slotY, slotWidth, slotHeight, collage.borderRadius / 2)
+                            } else {
+                                ctx.rect(slotX, slotY, slotWidth, slotHeight)
+                            }
+                            ctx.clip()
+                            
+                            // Calculate image dimensions to fill slot
+                            const imgAspect = cachedImg.width / cachedImg.height
+                            const slotAspect = slotWidth / slotHeight
+                            let drawWidth, drawHeight
+                            
+                            if (imgAspect > slotAspect) {
+                                drawHeight = slotHeight * slot.imageHeight
+                                drawWidth = drawHeight * imgAspect
+                            } else {
+                                drawWidth = slotWidth * slot.imageWidth
+                                drawHeight = drawWidth / imgAspect
+                            }
+                            
+                            const drawX = slotX + (slotWidth - drawWidth) / 2 + slot.imageX * slotWidth
+                            const drawY = slotY + (slotHeight - drawHeight) / 2 + slot.imageY * slotHeight
+                            
+                            ctx.drawImage(cachedImg, drawX, drawY, drawWidth, drawHeight)
+                            ctx.restore()
+                        } else {
+                            getCachedImage(slot.imageSrc)
+                            // Draw placeholder
+                            ctx.fillStyle = '#3f3f46'
+                            ctx.fillRect(slotX + 2, slotY + 2, slotWidth - 4, slotHeight - 4)
+                        }
+                    } else {
+                        // Empty slot indicator
+                        ctx.fillStyle = '#27272a'
+                        ctx.fillRect(slotX + 2, slotY + 2, slotWidth - 4, slotHeight - 4)
+                        ctx.fillStyle = '#52525b'
+                        ctx.font = '14px Inter'
+                        ctx.textAlign = 'center'
+                        ctx.textBaseline = 'middle'
+                        ctx.fillText('Drop Image', slotX + slotWidth / 2, slotY + slotHeight / 2)
+                    }
+                    
+                    // Highlight selected slot
+                    if (slot.id === selectedSlotId && element.id === selectedElementId) {
+                        ctx.strokeStyle = '#22d3ee'
+                        ctx.lineWidth = 3
+                        ctx.setLineDash([])
+                        ctx.strokeRect(slotX - 1, slotY - 1, slotWidth + 2, slotHeight + 2)
+                    }
+                    
+                    // Highlight hovered slot (during image drag) in blue
+                    if (hoveredSlot && hoveredSlot.collageId === element.id && hoveredSlot.slotId === slot.id) {
+                        ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'
+                        ctx.fillRect(slotX, slotY, slotWidth, slotHeight)
+                        ctx.strokeStyle = '#3b82f6'
+                        ctx.lineWidth = 3
+                        ctx.setLineDash([])
+                        ctx.strokeRect(slotX - 1, slotY - 1, slotWidth + 2, slotHeight + 2)
+                    }
+                })
+                
+                ctx.restore()
             }
 
             // Selection indicator with resize handles
@@ -396,23 +851,25 @@ export default function ImageEditor() {
                 ctx.lineWidth = 2
                 ctx.setLineDash([5, 5])
                 
-                const elWidth = element.type === 'image' ? element.width : element.width
-                const elHeight = element.type === 'image' ? element.height : element.height
+                const elWidth = element.width
+                const elHeight = element.height
                 
                 ctx.strokeRect(element.x - 2, element.y - 2, elWidth + 4, elHeight + 4)
                 
-                // Draw resize handles (corners) for both image and text
-                ctx.setLineDash([])
-                ctx.fillStyle = '#f5a623'
-                const handleSize = 10
-                // Top-left
-                ctx.fillRect(element.x - handleSize/2, element.y - handleSize/2, handleSize, handleSize)
-                // Top-right
-                ctx.fillRect(element.x + elWidth - handleSize/2, element.y - handleSize/2, handleSize, handleSize)
-                // Bottom-left
-                ctx.fillRect(element.x - handleSize/2, element.y + elHeight - handleSize/2, handleSize, handleSize)
-                // Bottom-right
-                ctx.fillRect(element.x + elWidth - handleSize/2, element.y + elHeight - handleSize/2, handleSize, handleSize)
+                // Draw resize handles (corners) for image and text (not collage when at full canvas size)
+                if (element.type !== 'collage' || element.width < CANVAS_WIDTH || element.height < CANVAS_HEIGHT) {
+                    ctx.setLineDash([])
+                    ctx.fillStyle = '#f5a623'
+                    const handleSize = 10
+                    // Top-left
+                    ctx.fillRect(element.x - handleSize/2, element.y - handleSize/2, handleSize, handleSize)
+                    // Top-right
+                    ctx.fillRect(element.x + elWidth - handleSize/2, element.y - handleSize/2, handleSize, handleSize)
+                    // Bottom-left
+                    ctx.fillRect(element.x - handleSize/2, element.y + elHeight - handleSize/2, handleSize, handleSize)
+                    // Bottom-right
+                    ctx.fillRect(element.x + elWidth - handleSize/2, element.y + elHeight - handleSize/2, handleSize, handleSize)
+                }
                 
                 ctx.restore()
             }
@@ -440,11 +897,24 @@ export default function ImageEditor() {
             })
             ctx.restore()
         }
-    }, [elements, selectedElementId, backgroundColor, isEditingText, alignmentGuides])
+    }, [elements, selectedElementId, selectedSlotId, backgroundColor, isEditingText, alignmentGuides, hoveredSlot, getCachedImage])
+
+    // Throttled render using requestAnimationFrame
+    const scheduleRender = useCallback(() => {
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current)
+        }
+        animationFrameRef.current = requestAnimationFrame(renderCanvasInternal)
+    }, [renderCanvasInternal])
 
     useEffect(() => {
-        renderCanvas()
-    }, [renderCanvas])
+        scheduleRender()
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current)
+            }
+        }
+    }, [scheduleRender])
 
     // Add text element
     const addTextElement = () => {
@@ -469,7 +939,8 @@ export default function ImageEditor() {
             shadowOffsetY: 2,
             outlineEnabled: false,
             outlineColor: '#000000',
-            outlineWidth: 2
+            outlineWidth: 2,
+            opacity: 1
         }
         setElements(prev => [...prev, newText])
         setSelectedElementId(newText.id)
@@ -503,7 +974,8 @@ export default function ImageEditor() {
                         width,
                         height,
                         originalWidth: img.width,
-                        originalHeight: img.height
+                        originalHeight: img.height,
+                        opacity: 1
                     }
                     setElements(prev => [...prev, newImage])
                     setSelectedElementId(newImage.id)
@@ -515,67 +987,154 @@ export default function ImageEditor() {
         e.target.value = ''
     }
 
-    // Create collage
-    const handleCollageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files
-        if (!files || files.length === 0) return
+    // Create collage element from template
+    const addCollageElement = (templateId: string) => {
+        const template = COLLAGE_TEMPLATES.find(t => t.id === templateId)
+        if (!template) return
 
-        const fileCount = files.length
-        const newElements: ImageElement[] = []
-        let loadedCount = 0
+        const slots: CollageSlot[] = template.slots.map((slot, index) => ({
+            id: `slot-${Date.now()}-${index}`,
+            x: slot.x,
+            y: slot.y,
+            width: slot.width,
+            height: slot.height,
+            imageX: 0,
+            imageY: 0,
+            imageWidth: 1,
+            imageHeight: 1
+        }))
 
-        // Calculate grid layout
-        const cols = Math.ceil(Math.sqrt(fileCount))
-        const rows = Math.ceil(fileCount / cols)
-        const cellWidth = CANVAS_WIDTH / cols
-        const cellHeight = CANVAS_HEIGHT / rows
-        const padding = 10
+        const newCollage: CollageElement = {
+            id: `collage-${Date.now()}`,
+            type: 'collage',
+            x: 0,
+            y: 0,
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            templateId,
+            slots,
+            padding: 10,
+            borderRadius: 0,
+            backgroundColor: '#1c1917',
+            borderColor: '#292524',
+            borderWidth: 2,
+            opacity: 1
+        }
+        setElements(prev => [...prev, newCollage])
+        setSelectedElementId(newCollage.id)
+    }
 
-        Array.from(files).forEach((file, index) => {
-            const reader = new FileReader()
-            reader.onload = (event) => {
-                const img = new Image()
-                img.onload = () => {
-                    const row = Math.floor(index / cols)
-                    const col = index % cols
-
-                    const maxWidth = cellWidth - padding * 2
-                    const maxHeight = cellHeight - padding * 2
-                    const aspectRatio = img.width / img.height
-
-                    let width = maxWidth
-                    let height = width / aspectRatio
-
-                    if (height > maxHeight) {
-                        height = maxHeight
-                        width = height * aspectRatio
-                    }
-
-                    const x = col * cellWidth + (cellWidth - width) / 2
-                    const y = row * cellHeight + (cellHeight - height) / 2
-
-                    newElements.push({
-                        id: `collage-${Date.now()}-${index}`,
-                        type: 'image',
-                        src: event.target?.result as string,
-                        x,
-                        y,
-                        width,
-                        height,
-                        originalWidth: img.width,
-                        originalHeight: img.height
-                    })
-
-                    loadedCount++
-                    if (loadedCount === fileCount) {
-                        setElements(prev => [...prev, ...newElements])
-                    }
-                }
-                img.src = event.target?.result as string
+    // Change template of existing collage (preserving images)
+    const changeCollageTemplate = (templateId: string) => {
+        if (!selectedElementId) return
+        const currentElement = elements.find(el => el.id === selectedElementId)
+        if (!currentElement || currentElement.type !== 'collage') return
+        
+        const template = COLLAGE_TEMPLATES.find(t => t.id === templateId)
+        if (!template) return
+        
+        const currentCollage = currentElement as CollageElement
+        // Collect existing images from current slots
+        const existingImages = currentCollage.slots
+            .filter(slot => slot.imageSrc)
+            .map(slot => ({
+                imageSrc: slot.imageSrc,
+                imageX: slot.imageX,
+                imageY: slot.imageY,
+                imageWidth: slot.imageWidth,
+                imageHeight: slot.imageHeight
+            }))
+        
+        // Create new slots and preserve images in order
+        const newSlots: CollageSlot[] = template.slots.map((slot, index) => {
+            const existingImage = existingImages[index]
+            return {
+                id: `slot-${Date.now()}-${index}`,
+                x: slot.x,
+                y: slot.y,
+                width: slot.width,
+                height: slot.height,
+                imageSrc: existingImage?.imageSrc,
+                imageX: existingImage?.imageX ?? 0,
+                imageY: existingImage?.imageY ?? 0,
+                imageWidth: existingImage?.imageWidth ?? 1,
+                imageHeight: existingImage?.imageHeight ?? 1
             }
-            reader.readAsDataURL(file)
         })
+        
+        setElements(prev => prev.map(el => {
+            if (el.id === selectedElementId && el.type === 'collage') {
+                return { ...el, templateId, slots: newSlots } as CollageElement
+            }
+            return el
+        }))
+        setSelectedSlotId(null)
+    }
+
+    // Handle template button click - show dialog if collage is selected
+    const handleTemplateClick = (templateId: string) => {
+        const hasSelectedCollage = selectedElement?.type === 'collage'
+        if (hasSelectedCollage) {
+            setPendingTemplateId(templateId)
+            setTemplateDialogOpen(true)
+        } else {
+            addCollageElement(templateId)
+        }
+    }
+
+    // Handle image upload to collage slot
+    const handleSlotImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files
+        if (!files || files.length === 0 || !selectedElementId || !selectedSlotId) return
+
+        const file = files[0]
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            const img = new Image()
+            img.onload = () => {
+                // Cache the image
+                imageCache.current.set(event.target?.result as string, img)
+                
+                setElements(prev => prev.map(el => {
+                    if (el.id === selectedElementId && el.type === 'collage') {
+                        const collage = el as CollageElement
+                        return {
+                            ...collage,
+                            slots: collage.slots.map(slot => {
+                                if (slot.id === selectedSlotId) {
+                                    return {
+                                        ...slot,
+                                        imageSrc: event.target?.result as string,
+                                        imageX: 0,
+                                        imageY: 0,
+                                        imageWidth: 1,
+                                        imageHeight: 1,
+                                        originalWidth: img.width,
+                                        originalHeight: img.height
+                                    }
+                                }
+                                return slot
+                            })
+                        } as CollageElement
+                    }
+                    return el
+                }))
+            }
+            img.src = event.target?.result as string
+        }
+        reader.readAsDataURL(file)
         e.target.value = ''
+    }
+
+    // Update collage element
+    const updateCollageElement = (updates: Partial<CollageElement>) => {
+        if (!selectedElementId || selectedElement?.type !== 'collage') return
+        setElements(prev => prev.map(el => {
+            if (el.id === selectedElementId && el.type === 'collage') {
+                return { ...el, ...updates } as CollageElement
+            }
+            return el
+        }))
     }
 
     // Delete selected element
@@ -583,6 +1142,7 @@ export default function ImageEditor() {
         if (!selectedElementId) return
         setElements(prev => prev.filter(el => el.id !== selectedElementId))
         setSelectedElementId(null)
+        setSelectedSlotId(null)
     }
 
     // Duplicate selected element
@@ -664,8 +1224,8 @@ export default function ImageEditor() {
         const x = (e.clientX - rect.left) / canvasScale
         const y = (e.clientY - rect.top) / canvasScale
 
-        // Check if clicking on resize handle of selected element (image or text)
-        if (selectedElementId && selectedElement) {
+        // Check if clicking on resize handle of selected element (image or text, not collage)
+        if (selectedElementId && selectedElement && selectedElement.type !== 'collage') {
             const handle = getResizeHandle(x, y, selectedElement as { x: number; y: number; width: number; height: number })
             if (handle) {
                 setIsResizing(true)
@@ -673,8 +1233,8 @@ export default function ImageEditor() {
                 setResizeStart({
                     x,
                     y,
-                    width: selectedElement.type === 'image' ? selectedElement.width : (selectedElement as TextElement).width,
-                    height: selectedElement.type === 'image' ? selectedElement.height : (selectedElement as TextElement).height,
+                    width: selectedElement.width,
+                    height: selectedElement.height,
                     elX: selectedElement.x,
                     elY: selectedElement.y,
                     fontSize: selectedElement.type === 'text' ? (selectedElement as TextElement).fontSize : 0
@@ -683,7 +1243,7 @@ export default function ImageEditor() {
             }
         }
 
-        // Find clicked element (reverse order for top element)
+        // Find clicked element (reverse order for top element) - check images/text BEFORE collages
         for (let i = elements.length - 1; i >= 0; i--) {
             const el = elements[i]
             let hit = false
@@ -692,10 +1252,38 @@ export default function ImageEditor() {
                 hit = x >= el.x && x <= el.x + el.width && y >= el.y && y <= el.y + el.height
             } else if (el.type === 'text') {
                 hit = x >= el.x && x <= el.x + el.width && y >= el.y && y <= el.y + el.height
+            } else if (el.type === 'collage') {
+                // For collages, check slots first
+                const collage = el as CollageElement
+                for (const slot of collage.slots) {
+                    const slotX = collage.x + slot.x * collage.width + collage.padding
+                    const slotY = collage.y + slot.y * collage.height + collage.padding
+                    const slotWidth = slot.width * collage.width - collage.padding * 2
+                    const slotHeight = slot.height * collage.height - collage.padding * 2
+                    
+                    if (x >= slotX && x <= slotX + slotWidth && y >= slotY && y <= slotY + slotHeight) {
+                        setSelectedElementId(collage.id)
+                        setSelectedSlotId(slot.id)
+                        // If slot has an image, start dragging it
+                        if (slot.imageSrc) {
+                            setIsDraggingSlotImage(true)
+                            setSlotImageDragStart({
+                                x,
+                                y,
+                                imageX: slot.imageX,
+                                imageY: slot.imageY
+                            })
+                        }
+                        return
+                    }
+                }
+                // Clicked on collage but not on a slot (padding area)
+                hit = x >= collage.x && x <= collage.x + collage.width && y >= collage.y && y <= collage.y + collage.height
             }
 
             if (hit) {
                 setSelectedElementId(el.id)
+                setSelectedSlotId(null)
                 setIsDragging(true)
                 setDragOffset({ x: x - el.x, y: y - el.y })
                 return
@@ -703,6 +1291,7 @@ export default function ImageEditor() {
         }
 
         setSelectedElementId(null)
+        setSelectedSlotId(null)
         setIsEditingText(false)
     }
 
@@ -870,7 +1459,6 @@ export default function ImageEditor() {
             let newY = resizeStart.elY
             
             const dx = x - resizeStart.x
-            const scale = Math.max(0.2, (resizeStart.width + dx) / resizeStart.width)
             
             switch (resizeHandle) {
                 case 'br': // Bottom-right: anchor top-left
@@ -907,9 +1495,33 @@ export default function ImageEditor() {
         }
 
         // Update cursor based on hover over resize handles
-        if (selectedElementId && selectedElement && !isDragging && !isResizing) {
+        if (selectedElementId && selectedElement && !isDragging && !isResizing && !isDraggingSlotImage) {
             const handle = getResizeHandle(x, y, selectedElement as { x: number; y: number; width: number; height: number })
-            setCursorStyle(handle ? getCursorForHandle(handle) : 'default')
+            setCursorStyle(handle ? getCursorForHandle(handle) : selectedSlotId ? 'grab' : 'default')
+        }
+
+        // Handle dragging image within slot
+        if (isDraggingSlotImage && selectedElementId && selectedSlotId && slotImageDragStart) {
+            const dx = (x - slotImageDragStart.x) / 500 // Scale factor for sensitivity
+            const dy = (y - slotImageDragStart.y) / 500
+            
+            const newImageX = Math.max(-0.5, Math.min(0.5, slotImageDragStart.imageX + dx))
+            const newImageY = Math.max(-0.5, Math.min(0.5, slotImageDragStart.imageY + dy))
+            
+            setElements(prev => prev.map(el => {
+                if (el.id === selectedElementId && el.type === 'collage') {
+                    return {
+                        ...el,
+                        slots: (el as CollageElement).slots.map(slot =>
+                            slot.id === selectedSlotId
+                                ? { ...slot, imageX: newImageX, imageY: newImageY }
+                                : slot
+                        )
+                    } as CollageElement
+                }
+                return el
+            }))
+            return
         }
 
         // Handle dragging
@@ -925,6 +1537,36 @@ export default function ImageEditor() {
             setAlignmentGuides(guides)
         }
 
+        // Check if dragging an image over a collage slot
+        const draggedEl = elements.find(e => e.id === selectedElementId)
+        if (draggedEl && draggedEl.type === 'image') {
+            const imgCenterX = newX + draggedEl.width / 2
+            const imgCenterY = newY + draggedEl.height / 2
+            
+            let foundSlot: { collageId: string; slotId: string } | null = null
+            
+            for (const otherEl of elements) {
+                if (otherEl.type === 'collage' && otherEl.id !== selectedElementId) {
+                    const collage = otherEl as CollageElement
+                    for (const slot of collage.slots) {
+                        const slotX = collage.x + slot.x * collage.width + collage.padding
+                        const slotY = collage.y + slot.y * collage.height + collage.padding
+                        const slotWidth = slot.width * collage.width - collage.padding * 2
+                        const slotHeight = slot.height * collage.height - collage.padding * 2
+                        
+                        if (imgCenterX >= slotX && imgCenterX <= slotX + slotWidth &&
+                            imgCenterY >= slotY && imgCenterY <= slotY + slotHeight) {
+                            foundSlot = { collageId: collage.id, slotId: slot.id }
+                            break
+                        }
+                    }
+                    if (foundSlot) break
+                }
+            }
+            
+            setHoveredSlot(foundSlot)
+        }
+
         setElements(prev => prev.map(el =>
             el.id === selectedElementId
                 ? { ...el, x: newX, y: newY }
@@ -933,10 +1575,51 @@ export default function ImageEditor() {
     }
 
     const handleCanvasMouseUp = () => {
+        // Check if dropping an image onto a collage slot
+        if (isDragging && selectedElementId && hoveredSlot) {
+            const draggedEl = elements.find(e => e.id === selectedElementId)
+            if (draggedEl && draggedEl.type === 'image') {
+                const imgEl = draggedEl as ImageElement
+                // Add image to the slot and remove the standalone image element
+                setElements(prev => {
+                    // First, update the collage slot with the image
+                    const updated = prev.map(el => {
+                        if (el.id === hoveredSlot.collageId && el.type === 'collage') {
+                            const collage = el as CollageElement
+                            return {
+                                ...collage,
+                                slots: collage.slots.map(slot => {
+                                    if (slot.id === hoveredSlot.slotId) {
+                                        return {
+                                            ...slot,
+                                            imageSrc: imgEl.src,
+                                            imageX: 0,
+                                            imageY: 0,
+                                            imageWidth: 1,
+                                            imageHeight: 1
+                                        }
+                                    }
+                                    return slot
+                                })
+                            } as CollageElement
+                        }
+                        return el
+                    })
+                    // Remove the dragged image element
+                    return updated.filter(el => el.id !== selectedElementId)
+                })
+                setSelectedElementId(hoveredSlot.collageId)
+                setSelectedSlotId(hoveredSlot.slotId)
+            }
+        }
+        
         setIsDragging(false)
         setIsResizing(false)
         setResizeHandle(null)
         setAlignmentGuides([])
+        setHoveredSlot(null)
+        setIsDraggingSlotImage(false)
+        setSlotImageDragStart(null)
     }
 
     // Save canvas as image
@@ -958,10 +1641,61 @@ export default function ImageEditor() {
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
-            {/* Canvas Area */}
-            <div className="lg:col-span-3">
-                <Card className="bg-stone-900/50 border-stone-800/60 rounded-none h-full">
+        <>
+            {/* Template Choice Dialog */}
+            {templateDialogOpen && pendingTemplateId && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                    <Card className="bg-stone-900 border-stone-700 rounded-none w-80">
+                        <CardHeader className="p-4 border-b border-stone-800">
+                            <CardTitle className="text-sm font-bold uppercase tracking-wider">Template Action</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            <p className="text-xs text-stone-400">
+                                You have a collage selected. What would you like to do?
+                            </p>
+                            <div className="flex flex-col gap-2">
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-10 text-xs font-bold uppercase rounded-none"
+                                    onClick={() => {
+                                        changeCollageTemplate(pendingTemplateId)
+                                        setTemplateDialogOpen(false)
+                                        setPendingTemplateId(null)
+                                    }}
+                                >
+                                    Change Selected Collage Template
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full h-10 text-xs font-bold uppercase rounded-none"
+                                    onClick={() => {
+                                        addCollageElement(pendingTemplateId)
+                                        setTemplateDialogOpen(false)
+                                        setPendingTemplateId(null)
+                                    }}
+                                >
+                                    Add New Collage Layer
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-9 text-xs text-stone-500 rounded-none"
+                                    onClick={() => {
+                                        setTemplateDialogOpen(false)
+                                        setPendingTemplateId(null)
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+                {/* Canvas Area - Sticky */}
+                <div className="lg:col-span-3 lg:sticky lg:top-0 lg:self-start">
+                    <Card className="bg-stone-900/50 border-stone-800/60 rounded-none h-full">
                     <CardHeader className="!pl-6 !pr-10 py-5 border-b border-stone-800/40">
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-sm font-bold uppercase tracking-widest">Canvas</CardTitle>
@@ -1050,13 +1784,6 @@ export default function ImageEditor() {
                         >
                             <ImageIcon className="w-4 h-4 mr-2" /> Add Image
                         </Button>
-                        <Button
-                            variant="outline"
-                            className="w-full h-10 justify-start text-xs font-bold uppercase rounded-none"
-                            onClick={() => collageInputRef.current?.click()}
-                        >
-                            <LayoutGrid className="w-4 h-4 mr-2" /> Create Collage
-                        </Button>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -1066,14 +1793,62 @@ export default function ImageEditor() {
                             onChange={handleImageUpload}
                         />
                         <input
-                            ref={collageInputRef}
+                            ref={slotImageInputRef}
                             type="file"
                             accept="image/*"
-                            multiple
                             className="hidden"
-                            onChange={handleCollageUpload}
+                            onChange={handleSlotImageUpload}
                         />
                     </CardContent>
+                </Card>
+
+                {/* Collage Templates */}
+                <Card className="bg-stone-900/50 border-stone-800/60 rounded-none">
+                    <CardHeader 
+                        className="p-4 border-b border-stone-800/40 cursor-pointer hover:bg-stone-800/20 transition-colors"
+                        onClick={() => setIsTemplatesCollapsed(!isTemplatesCollapsed)}
+                    >
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                                Collage Templates ({COLLAGE_TEMPLATES.length})
+                            </CardTitle>
+                            {isTemplatesCollapsed ? (
+                                <ChevronDown className="w-4 h-4 text-stone-500" />
+                            ) : (
+                                <ChevronUp className="w-4 h-4 text-stone-500" />
+                            )}
+                        </div>
+                    </CardHeader>
+                    {!isTemplatesCollapsed && (
+                        <CardContent className="p-3">
+                            <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                {COLLAGE_TEMPLATES.map(template => (
+                                    <button
+                                        key={template.id}
+                                        onClick={() => handleTemplateClick(template.id)}
+                                        className="aspect-square bg-stone-950 border border-stone-800 hover:border-primary p-1 transition-colors"
+                                        title={template.name}
+                                    >
+                                        <div className="w-full h-full relative">
+                                            {template.slots.map((slot, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="absolute bg-stone-700 border border-stone-600"
+                                                    style={{
+                                                        left: `${slot.x * 100}%`,
+                                                        top: `${slot.y * 100}%`,
+                                                        width: `${slot.width * 100 - 4}%`,
+                                                        height: `${slot.height * 100 - 4}%`,
+                                                        margin: '2%'
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </CardContent>
+                    )}
                 </Card>
 
                 {/* Background */}
@@ -1109,23 +1884,51 @@ export default function ImageEditor() {
                         ) : (
                             <div className="space-y-1">
                                 {[...elements].reverse().map((el, idx) => (
-                                    <div
-                                        key={el.id}
-                                        className={`flex items-center gap-2 p-2 cursor-pointer transition-colors ${
-                                            el.id === selectedElementId
-                                                ? 'bg-primary/20 border border-primary/40'
-                                                : 'bg-stone-950/50 border border-stone-800/60 hover:border-stone-700'
-                                        }`}
-                                        onClick={() => setSelectedElementId(el.id)}
-                                    >
-                                        {el.type === 'text' ? (
-                                            <Type className="w-3.5 h-3.5 text-stone-500" />
-                                        ) : (
-                                            <ImageIcon className="w-3.5 h-3.5 text-stone-500" />
+                                    <div key={el.id}>
+                                        <div
+                                            className={`flex items-center gap-2 p-2 cursor-pointer transition-colors ${
+                                                el.id === selectedElementId && !selectedSlotId
+                                                    ? 'bg-primary/20 border border-primary/40'
+                                                    : 'bg-stone-950/50 border border-stone-800/60 hover:border-stone-700'
+                                            }`}
+                                            onClick={() => { setSelectedElementId(el.id); setSelectedSlotId(null); }}
+                                        >
+                                            {el.type === 'text' ? (
+                                                <Type className="w-3.5 h-3.5 text-stone-500" />
+                                            ) : el.type === 'collage' ? (
+                                                <Grid className="w-3.5 h-3.5 text-stone-500" />
+                                            ) : (
+                                                <ImageIcon className="w-3.5 h-3.5 text-stone-500" />
+                                            )}
+                                            <span className="text-xs text-stone-400 truncate flex-1">
+                                                {el.type === 'text' 
+                                                    ? (el as TextElement).content.substring(0, 20) 
+                                                    : el.type === 'collage'
+                                                        ? `Collage (${(el as CollageElement).slots.length} slots)`
+                                                        : `Image ${elements.length - idx}`}
+                                            </span>
+                                        </div>
+                                        {/* Show collage slots as sub-items */}
+                                        {el.type === 'collage' && el.id === selectedElementId && (
+                                            <div className="ml-4 space-y-0.5 mt-0.5">
+                                                {(el as CollageElement).slots.map((slot, slotIdx) => (
+                                                    <div
+                                                        key={slot.id}
+                                                        className={`flex items-center gap-2 p-1.5 cursor-pointer transition-colors ${
+                                                            slot.id === selectedSlotId
+                                                                ? 'bg-cyan-500/20 border border-cyan-500/40'
+                                                                : 'bg-stone-900/50 border border-stone-800/40 hover:border-stone-700'
+                                                        }`}
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedSlotId(slot.id); }}
+                                                    >
+                                                        <Square className="w-3 h-3 text-stone-600" />
+                                                        <span className="text-[10px] text-stone-500 truncate flex-1">
+                                                            Slot {slotIdx + 1} {slot.imageSrc ? '(has image)' : '(empty)'}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         )}
-                                        <span className="text-xs text-stone-400 truncate flex-1">
-                                            {el.type === 'text' ? (el as TextElement).content.substring(0, 20) : `Image ${elements.length - idx}`}
-                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -1139,7 +1942,7 @@ export default function ImageEditor() {
                         <CardHeader className="p-4 border-b border-stone-800/40">
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                                    {selectedElement.type === 'text' ? 'Text Properties' : 'Image Properties'}
+                                    {selectedElement.type === 'text' ? 'Text Properties' : selectedElement.type === 'collage' ? 'Collage Properties' : 'Image Properties'}
                                 </CardTitle>
                                 <div className="flex gap-1">
                                     <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveElementLayer('up')} title="Bring Forward">
@@ -1158,6 +1961,29 @@ export default function ImageEditor() {
                             </div>
                         </CardHeader>
                         <CardContent className="p-4 space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar">
+                            {/* Opacity - Common for all elements */}
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Opacity</label>
+                                    <span className="text-[10px] text-stone-400">{Math.round((selectedElement.opacity ?? 1) * 100)}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={Math.round((selectedElement.opacity ?? 1) * 100)}
+                                    onChange={(e) => {
+                                        const opacity = parseInt(e.target.value) / 100
+                                        setElements(prev => prev.map(el =>
+                                            el.id === selectedElementId ? { ...el, opacity } : el
+                                        ))
+                                    }}
+                                    className="w-full h-2 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                />
+                            </div>
+
+                            <Separator className="bg-stone-800/50" />
+
                             {selectedElement.type === 'text' && (
                                 <>
                                     {/* Text Content */}
@@ -1484,10 +2310,336 @@ export default function ImageEditor() {
                                     </div>
                                 </>
                             )}
+
+                            {selectedElement.type === 'collage' && (
+                                <>
+                                    {/* Slot Actions */}
+                                    {selectedSlotId && (
+                                        <div className="space-y-3 p-3 bg-stone-950 border border-stone-800">
+                                            <label className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Selected Slot</label>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full h-9 text-xs font-bold uppercase rounded-none"
+                                                onClick={() => slotImageInputRef.current?.click()}
+                                            >
+                                                <ImageIcon className="w-3.5 h-3.5 mr-2" /> Add/Replace Image
+                                            </Button>
+                                            {(selectedElement as CollageElement).slots.find(s => s.id === selectedSlotId)?.imageSrc && (
+                                                <>
+                                                    {/* Image Zoom */}
+                                                    <div className="space-y-1">
+                                                        <div className="flex justify-between items-center">
+                                                            <label className="text-[9px] text-stone-500">Image Zoom</label>
+                                                            <span className="text-[9px] text-stone-400">
+                                                                {Math.round(((selectedElement as CollageElement).slots.find(s => s.id === selectedSlotId)?.imageWidth || 1) * 100)}%
+                                                            </span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="50"
+                                                            max="200"
+                                                            value={Math.round(((selectedElement as CollageElement).slots.find(s => s.id === selectedSlotId)?.imageWidth || 1) * 100)}
+                                                            onChange={(e) => {
+                                                                const zoom = parseInt(e.target.value) / 100
+                                                                setElements(prev => prev.map(el => {
+                                                                    if (el.id === selectedElementId && el.type === 'collage') {
+                                                                        return {
+                                                                            ...el,
+                                                                            slots: (el as CollageElement).slots.map(slot =>
+                                                                                slot.id === selectedSlotId
+                                                                                    ? { ...slot, imageWidth: zoom, imageHeight: zoom }
+                                                                                    : slot
+                                                                            )
+                                                                        } as CollageElement
+                                                                    }
+                                                                    return el
+                                                                }))
+                                                            }}
+                                                            className="w-full h-1.5 bg-stone-800 rounded-none appearance-none cursor-pointer accent-cyan-500"
+                                                        />
+                                                    </div>
+                                                    {/* Drag instruction */}
+                                                    <p className="text-[9px] text-stone-500 italic">
+                                                        Drag image in slot to pan
+                                                    </p>
+                                                    {/* Reset & Remove buttons */}
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="flex-1 h-8 text-[10px] font-bold uppercase rounded-none"
+                                                            onClick={() => {
+                                                                setElements(prev => prev.map(el => {
+                                                                    if (el.id === selectedElementId && el.type === 'collage') {
+                                                                        return {
+                                                                            ...el,
+                                                                            slots: (el as CollageElement).slots.map(slot =>
+                                                                                slot.id === selectedSlotId
+                                                                                    ? { ...slot, imageX: 0, imageY: 0, imageWidth: 1, imageHeight: 1 }
+                                                                                    : slot
+                                                                            )
+                                                                        } as CollageElement
+                                                                    }
+                                                                    return el
+                                                                }))
+                                                            }}
+                                                        >
+                                                            Reset
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="flex-1 h-8 text-[10px] font-bold uppercase rounded-none hover:text-destructive"
+                                                            onClick={() => {
+                                                                setElements(prev => prev.map(el => {
+                                                                    if (el.id === selectedElementId && el.type === 'collage') {
+                                                                        return {
+                                                                            ...el,
+                                                                            slots: (el as CollageElement).slots.map(slot => 
+                                                                                slot.id === selectedSlotId 
+                                                                                    ? { ...slot, imageSrc: undefined, imageX: 0, imageY: 0, imageWidth: 1, imageHeight: 1 }
+                                                                                    : slot
+                                                                            )
+                                                                        } as CollageElement
+                                                                    }
+                                                                    return el
+                                                                }))
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-3 h-3 mr-1" /> Remove
+                                                        </Button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <Separator className="bg-stone-800/50" />
+
+                                    {/* Collage Size */}
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Collage Size</label>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[9px] text-stone-500">Width</label>
+                                                <span className="text-[9px] text-stone-400">{Math.round((selectedElement as CollageElement).width)}px</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="100"
+                                                max="1080"
+                                                value={Math.round((selectedElement as CollageElement).width)}
+                                                onChange={(e) => updateCollageElement({ width: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[9px] text-stone-500">Height</label>
+                                                <span className="text-[9px] text-stone-400">{Math.round((selectedElement as CollageElement).height)}px</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="100"
+                                                max="1080"
+                                                value={Math.round((selectedElement as CollageElement).height)}
+                                                onChange={(e) => updateCollageElement({ height: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Collage Position */}
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Position</label>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[9px] text-stone-500">X</label>
+                                                <span className="text-[9px] text-stone-400">{Math.round((selectedElement as CollageElement).x)}px</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="-500"
+                                                max="1080"
+                                                value={Math.round((selectedElement as CollageElement).x)}
+                                                onChange={(e) => updateCollageElement({ x: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[9px] text-stone-500">Y</label>
+                                                <span className="text-[9px] text-stone-400">{Math.round((selectedElement as CollageElement).y)}px</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="-500"
+                                                max="1080"
+                                                value={Math.round((selectedElement as CollageElement).y)}
+                                                onChange={(e) => updateCollageElement({ y: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                            />
+                                        </div>
+                                        {/* Center button */}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full h-8 text-[10px] font-bold uppercase rounded-none"
+                                            onClick={() => {
+                                                const collage = selectedElement as CollageElement
+                                                updateCollageElement({
+                                                    x: (CANVAS_WIDTH - collage.width) / 2,
+                                                    y: (CANVAS_HEIGHT - collage.height) / 2
+                                                })
+                                            }}
+                                        >
+                                            Center on Canvas
+                                        </Button>
+                                    </div>
+
+                                    <Separator className="bg-stone-800/50" />
+
+                                    {/* Collage Padding */}
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Padding</label>
+                                            <span className="text-[10px] text-stone-400">{(selectedElement as CollageElement).padding}px</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="50"
+                                            value={(selectedElement as CollageElement).padding}
+                                            onChange={(e) => updateCollageElement({ padding: parseInt(e.target.value) })}
+                                            className="w-full h-2 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                        />
+                                    </div>
+
+                                    {/* Border Radius */}
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Border Radius</label>
+                                            <span className="text-[10px] text-stone-400">{(selectedElement as CollageElement).borderRadius}px</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="50"
+                                            value={(selectedElement as CollageElement).borderRadius}
+                                            onChange={(e) => updateCollageElement({ borderRadius: parseInt(e.target.value) })}
+                                            className="w-full h-2 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                        />
+                                    </div>
+
+                                    {/* Border Width */}
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Border Width</label>
+                                            <span className="text-[10px] text-stone-400">{(selectedElement as CollageElement).borderWidth}px</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="10"
+                                            value={(selectedElement as CollageElement).borderWidth}
+                                            onChange={(e) => updateCollageElement({ borderWidth: parseInt(e.target.value) })}
+                                            className="w-full h-2 bg-stone-800 rounded-none appearance-none cursor-pointer accent-primary"
+                                        />
+                                    </div>
+
+                                    {/* Background Color */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Background Color</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="color"
+                                                value={(selectedElement as CollageElement).backgroundColor}
+                                                onChange={(e) => updateCollageElement({ backgroundColor: e.target.value })}
+                                                className="w-10 h-8 rounded-none border border-stone-700 cursor-pointer"
+                                            />
+                                            <Input
+                                                value={(selectedElement as CollageElement).backgroundColor}
+                                                onChange={(e) => updateCollageElement({ backgroundColor: e.target.value })}
+                                                className="flex-1 h-8 text-xs rounded-none bg-stone-950 border-stone-800"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Border Color */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Border Color</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="color"
+                                                value={(selectedElement as CollageElement).borderColor}
+                                                onChange={(e) => updateCollageElement({ borderColor: e.target.value })}
+                                                className="w-10 h-8 rounded-none border border-stone-700 cursor-pointer"
+                                            />
+                                            <Input
+                                                value={(selectedElement as CollageElement).borderColor}
+                                                onChange={(e) => updateCollageElement({ borderColor: e.target.value })}
+                                                className="flex-1 h-8 text-xs rounded-none bg-stone-950 border-stone-800"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Change Template */}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Change Template</label>
+                                        <select
+                                            value={(selectedElement as CollageElement).templateId}
+                                            onChange={(e) => {
+                                                const template = COLLAGE_TEMPLATES.find(t => t.id === e.target.value)
+                                                if (template) {
+                                                    const currentCollage = selectedElement as CollageElement
+                                                    // Collect existing images from current slots
+                                                    const existingImages = currentCollage.slots
+                                                        .filter(slot => slot.imageSrc)
+                                                        .map(slot => ({
+                                                            imageSrc: slot.imageSrc,
+                                                            imageX: slot.imageX,
+                                                            imageY: slot.imageY,
+                                                            imageWidth: slot.imageWidth,
+                                                            imageHeight: slot.imageHeight
+                                                        }))
+                                                    
+                                                    // Create new slots and preserve images in order
+                                                    const newSlots: CollageSlot[] = template.slots.map((slot, index) => {
+                                                        const existingImage = existingImages[index]
+                                                        return {
+                                                            id: `slot-${Date.now()}-${index}`,
+                                                            x: slot.x,
+                                                            y: slot.y,
+                                                            width: slot.width,
+                                                            height: slot.height,
+                                                            imageSrc: existingImage?.imageSrc,
+                                                            imageX: existingImage?.imageX ?? 0,
+                                                            imageY: existingImage?.imageY ?? 0,
+                                                            imageWidth: existingImage?.imageWidth ?? 1,
+                                                            imageHeight: existingImage?.imageHeight ?? 1
+                                                        }
+                                                    })
+                                                    updateCollageElement({ templateId: e.target.value, slots: newSlots })
+                                                    setSelectedSlotId(null)
+                                                }
+                                            }}
+                                            className="w-full h-9 px-3 text-xs rounded-none bg-stone-950 border border-stone-800 text-stone-200"
+                                        >
+                                            {COLLAGE_TEMPLATES.map(template => (
+                                                <option key={template.id} value={template.id}>{template.name}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[9px] text-stone-500 italic">
+                                            Images are preserved when changing templates
+                                        </p>
+                                    </div>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 )}
             </div>
         </div>
+        </>
     )
 }

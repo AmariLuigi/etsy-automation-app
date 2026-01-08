@@ -795,7 +795,11 @@ export default function ProductEditor({ folderData, generatedContent, onContentC
                 </TabsContent>
 
                 {/* --- PUBLISH TAB --- */}
-                <TabsContent value="edit" className="m-0">
+                <TabsContent 
+                    value="edit" 
+                    className="m-0 data-[state=inactive]:hidden"
+                    forceMount
+                >
                     <ImageEditor />
                 </TabsContent>
 
