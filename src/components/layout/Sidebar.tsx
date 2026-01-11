@@ -10,7 +10,8 @@ import {
     Coins,
     Activity,
     RefreshCw,
-    Rocket
+    Rocket,
+    Box
 } from "lucide-react"
 
 interface SidebarProps {
@@ -90,8 +91,8 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                         variant={activeTab === "workspace" ? "default" : "ghost"}
                         className={cn(
                             "w-full justify-start gap-4 h-11 !pl-8 !pr-4 rounded-none transition-all group overflow-hidden relative",
-                            activeTab === "workspace" 
-                                ? "bg-primary/10 text-primary hover:bg-primary/15 font-semibold" 
+                            activeTab === "workspace"
+                                ? "bg-primary/10 text-primary hover:bg-primary/15 font-semibold"
                                 : "text-stone-400 hover:text-stone-200 hover:bg-stone-900/50"
                         )}
                         onClick={() => onTabChange("workspace")}
@@ -104,11 +105,28 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                     </Button>
 
                     <Button
+                        variant={activeTab === "stl-analyzer" ? "default" : "ghost"}
+                        className={cn(
+                            "w-full justify-start gap-4 h-11 !pl-8 !pr-4 rounded-none transition-all group overflow-hidden relative",
+                            activeTab === "stl-analyzer"
+                                ? "bg-primary/10 text-primary hover:bg-primary/15 font-semibold"
+                                : "text-stone-400 hover:text-stone-200 hover:bg-stone-900/50"
+                        )}
+                        onClick={() => onTabChange("stl-analyzer")}
+                    >
+                        {activeTab === "stl-analyzer" && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r" />
+                        )}
+                        <Box className="w-4 h-4 shrink-0" />
+                        <span className="text-[11px] uppercase font-bold tracking-wide">STL Analyzer</span>
+                    </Button>
+
+                    <Button
                         variant={activeTab === "settings" ? "default" : "ghost"}
                         className={cn(
                             "w-full justify-start gap-4 h-11 !pl-8 !pr-4 rounded-none transition-all group overflow-hidden relative",
-                            activeTab === "settings" 
-                                ? "bg-primary/10 text-primary hover:bg-primary/15 font-semibold" 
+                            activeTab === "settings"
+                                ? "bg-primary/10 text-primary hover:bg-primary/15 font-semibold"
                                 : "text-stone-400 hover:text-stone-200 hover:bg-stone-900/50"
                         )}
                         onClick={() => onTabChange("settings")}

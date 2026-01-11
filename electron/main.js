@@ -177,10 +177,13 @@ ipcMain.handle('runninghub:uploadImage', async (event, { apiKey, imageBase64, fi
     });
 
     const uploadResult = await uploadResponse.json();
+    console.log('📦 [RunningHub] Upload response:', uploadResult);
+
     if (uploadResult.code !== 0) {
       throw new Error(uploadResult.msg || 'Failed to upload image');
     }
 
+    console.log('✅ [RunningHub] Upload success, fileName:', uploadResult.data.fileName);
     return { success: true, fileName: uploadResult.data.fileName };
   } catch (error) {
     console.error('❌ [RunningHub] Upload Error:', error);
@@ -525,6 +528,389 @@ ipcMain.handle('runninghub:removeWatermark', async (event, data) => {
   } catch (error) {
     console.error('❌ [Watermark] Error:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler: Select Folder for Export
+ipcMain.handle('dialog:selectFolder', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory', 'createDirectory'],
+    title: 'Select folder to save media'
+  });
+  if (result.canceled) return null;
+  return result.filePaths[0];
+});
+
+// IPC Handler: Save File (supports base64 data URLs)
+ipcMain.handle('file:save', async (event, folderPath, fileName, dataUrl) => {
+  try {
+    const filePath = path.join(folderPath, fileName);
+
+    // Handle data URLs (base64)
+    if (dataUrl.startsWith('data:')) {
+      const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (matches) {
+        const buffer = Buffer.from(matches[2], 'base64');
+        fs.writeFileSync(filePath, buffer);
+        return true;
+      }
+    }
+
+    // Handle regular URLs - download them
+    if (dataUrl.startsWith('http')) {
+      const response = await fetch(dataUrl);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      fs.writeFileSync(filePath, buffer);
+      return true;
+    }
+
+    // Handle raw base64 (without data: prefix)
+    const buffer = Buffer.from(dataUrl, 'base64');
+    fs.writeFileSync(filePath, buffer);
+    return true;
+  } catch (error) {
+    console.error('Error saving file:', error);
+    return false;
+  }
+});
+
+// IPC Handler: Generate rclone drive link
+ipcMain.handle('rclone:generateLink', async (event, remotePath) => {
+  try {
+    const rclonePath = 'Z:\\Model pack\\EtsyAutomationApp\\rclone\\rclone.exe';
+    const { execSync } = require('child_process');
+
+    console.log('🔗 [Rclone] Generating link for:', remotePath);
+
+    // Execute rclone link command
+    const result = execSync(`"${rclonePath}" link "${remotePath}"`, {
+      encoding: 'utf8',
+      timeout: 30000
+    }).trim();
+
+    console.log('✅ [Rclone] Generated link:', result);
+    return { success: true, link: result };
+  } catch (error) {
+    console.error('❌ [Rclone] Error:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler: Copy folder to Google Drive using rclone
+ipcMain.handle('rclone:copyToDrive', async (event, localPath, remotePath) => {
+  try {
+    const rclonePath = 'Z:\\Model pack\\EtsyAutomationApp\\rclone\\rclone.exe';
+    const { execSync } = require('child_process');
+
+    console.log('📤 [Rclone] Copying to drive:', localPath, '->', remotePath);
+
+    // Execute rclone copy command
+    execSync(`"${rclonePath}" copy "${localPath}" "${remotePath}" --progress`, {
+      encoding: 'utf8',
+      timeout: 300000 // 5 min timeout
+    });
+
+    console.log('✅ [Rclone] Copy complete');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ [Rclone] Copy Error:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler: Generate Video using AI-App API
+ipcMain.handle('runninghub:generateVideoAiApp', async (event, { apiKey, webappId, instanceType, nodeInfoList }) => {
+  console.log('🎬 [AI-App Video] Starting generation...');
+  console.log('🆔 webappId:', webappId);
+  console.log('🔑 apiKey:', apiKey ? apiKey.substring(0, 8) + '...' : 'MISSING');
+  console.log('📋 nodeInfoList:', nodeInfoList);
+
+  try {
+    // Try both domains - .ai first, then .cn
+    const domains = ['www.runninghub.ai', 'www.runninghub.cn'];
+    let runData = null;
+    let workingDomain = null;
+
+    for (const domain of domains) {
+      console.log(`🌐 [AI-App Video] Trying domain: ${domain}`);
+
+      const runResponse = await fetch(`https://${domain}/task/openapi/ai-app/run`, {
+        method: 'POST',
+        headers: {
+          'Host': domain,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          webappId,
+          apiKey,
+          instanceType: instanceType || undefined,
+          nodeInfoList
+        })
+      });
+
+      runData = await runResponse.json();
+      console.log(`🚀 [AI-App Video] Response from ${domain}:`, runData);
+
+      if (runData.code === 0) {
+        workingDomain = domain;
+        break;
+      } else if (runData.msg !== 'webapp not exists') {
+        // Different error, don't try next domain
+        throw new Error(runData.msg || 'Failed to start AI-App task');
+      }
+      console.log(`⚠️ [AI-App Video] webapp not exists on ${domain}, trying next...`);
+    }
+
+    if (!workingDomain || runData.code !== 0) {
+      throw new Error(runData?.msg || 'webapp not exists on any domain');
+    }
+
+    const taskId = runData.data?.taskId;
+    if (!taskId) {
+      throw new Error('No taskId returned from AI-App');
+    }
+
+    console.log('✅ [AI-App Video] Task started:', taskId, 'on domain:', workingDomain);
+    event.sender.send('runninghub:task-id', taskId);
+
+    // Step 2: Poll for task completion using the working domain
+    let attempts = 0;
+    const maxAttempts = 300; // 5 minutes max
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const statusResponse = await fetch(`https://${workingDomain}/task/openapi/outputs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          taskId,
+          apiKey
+        })
+      });
+
+      const statusData = await statusResponse.json();
+
+      if (statusData.code === 0 && statusData.data) {
+        const outputs = statusData.data;
+
+        // Check for video output
+        for (const output of outputs) {
+          if (output.fileType === 'video' || (output.fileUrl && output.fileUrl.includes('.mp4'))) {
+            console.log('✨ [AI-App Video] Video generated:', output.fileUrl);
+            return output.fileUrl;
+          }
+        }
+
+        // Check if task failed
+        if (outputs.some(o => o.status === 'FAILED')) {
+          throw new Error('Video generation task failed');
+        }
+
+        // If we have outputs but no video yet, check if complete
+        if (outputs.length > 0 && outputs.every(o => o.status === 'SUCCESS' || o.fileUrl)) {
+          // All outputs ready, find video
+          const videoOutput = outputs.find(o => o.fileUrl && (o.fileUrl.includes('.mp4') || o.fileUrl.includes('video')));
+          if (videoOutput) {
+            return videoOutput.fileUrl;
+          }
+        }
+      }
+
+      attempts++;
+
+      if (attempts % 10 === 0) {
+        console.log(`⏳ [AI-App Video] Still processing... (${attempts}s)`);
+      }
+    }
+
+    throw new Error('Task timed out after 5 minutes');
+
+  } catch (error) {
+    console.error('❌ [AI-App Video] Error:', error.message);
+    throw error;
+  }
+});
+
+// IPC Handler: Open STL file dialog
+ipcMain.handle('dialog:openStl', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'STL Files', extensions: ['stl'] }
+    ],
+    title: 'Select STL file to analyze'
+  });
+  if (result.canceled) return null;
+  return result.filePaths[0];
+});
+
+// IPC Handler: Analyze STL file
+ipcMain.handle('stl:analyze', async (event, filePath) => {
+  console.log('📦 [STL] Analyzing file:', filePath);
+
+  try {
+    const stats = fs.statSync(filePath);
+    const fileSize = stats.size;
+    const buffer = fs.readFileSync(filePath);
+
+    let triangleCount = 0;
+    let volume = 0;
+    let surfaceArea = 0;
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+
+    // Helper function to calculate triangle area using cross product
+    const triangleArea = (v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z) => {
+      // Edge vectors
+      const ax = v2x - v1x, ay = v2y - v1y, az = v2z - v1z;
+      const bx = v3x - v1x, by = v3y - v1y, bz = v3z - v1z;
+      // Cross product
+      const cx = ay * bz - az * by;
+      const cy = az * bx - ax * bz;
+      const cz = ax * by - ay * bx;
+      // Area = 0.5 * |cross product|
+      return 0.5 * Math.sqrt(cx * cx + cy * cy + cz * cz);
+    };
+
+    // Check if ASCII or Binary STL
+    const header = buffer.toString('ascii', 0, 80);
+    const isAscii = header.toLowerCase().startsWith('solid') && buffer.toString('ascii', 0, 200).includes('facet');
+
+    if (isAscii) {
+      // Parse ASCII STL
+      console.log('📄 [STL] Parsing as ASCII format...');
+      const content = buffer.toString('ascii');
+      const facetRegex = /facet\s+normal[\s\S]*?outer\s+loop[\s\S]*?vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)[\s\S]*?vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)[\s\S]*?vertex\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)[\s\S]*?endloop[\s\S]*?endfacet/gi;
+
+      let match;
+      while ((match = facetRegex.exec(content)) !== null) {
+        triangleCount++;
+
+        // Parse vertices
+        const v1 = { x: parseFloat(match[1]), y: parseFloat(match[2]), z: parseFloat(match[3]) };
+        const v2 = { x: parseFloat(match[4]), y: parseFloat(match[5]), z: parseFloat(match[6]) };
+        const v3 = { x: parseFloat(match[7]), y: parseFloat(match[8]), z: parseFloat(match[9]) };
+
+        // Update bounds
+        minX = Math.min(minX, v1.x, v2.x, v3.x);
+        maxX = Math.max(maxX, v1.x, v2.x, v3.x);
+        minY = Math.min(minY, v1.y, v2.y, v3.y);
+        maxY = Math.max(maxY, v1.y, v2.y, v3.y);
+        minZ = Math.min(minZ, v1.z, v2.z, v3.z);
+        maxZ = Math.max(maxZ, v1.z, v2.z, v3.z);
+
+        // Calculate signed volume of tetrahedron
+        volume += (v1.x * (v2.y * v3.z - v3.y * v2.z) +
+          v1.y * (v3.x * v2.z - v2.x * v3.z) +
+          v1.z * (v2.x * v3.y - v3.x * v2.y)) / 6.0;
+
+        // Calculate surface area
+        surfaceArea += triangleArea(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z);
+      }
+    } else {
+      // Parse Binary STL
+      console.log('📦 [STL] Parsing as Binary format...');
+
+      if (buffer.length < 84) {
+        throw new Error('Invalid STL file: too small');
+      }
+
+      triangleCount = buffer.readUInt32LE(80);
+      console.log(`📊 [STL] Triangle count: ${triangleCount}`);
+
+      let offset = 84;
+
+      for (let i = 0; i < triangleCount && offset + 50 <= buffer.length; i++) {
+        // Skip normal vector (12 bytes)
+        offset += 12;
+
+        // Read vertices
+        const v1x = buffer.readFloatLE(offset);
+        const v1y = buffer.readFloatLE(offset + 4);
+        const v1z = buffer.readFloatLE(offset + 8);
+        offset += 12;
+
+        const v2x = buffer.readFloatLE(offset);
+        const v2y = buffer.readFloatLE(offset + 4);
+        const v2z = buffer.readFloatLE(offset + 8);
+        offset += 12;
+
+        const v3x = buffer.readFloatLE(offset);
+        const v3y = buffer.readFloatLE(offset + 4);
+        const v3z = buffer.readFloatLE(offset + 8);
+        offset += 12;
+
+        // Skip attribute (2 bytes)
+        offset += 2;
+
+        // Calculate bounding box on the fly
+        if (v1x < minX) minX = v1x; if (v1x > maxX) maxX = v1x;
+        if (v2x < minX) minX = v2x; if (v2x > maxX) maxX = v2x;
+        if (v3x < minX) minX = v3x; if (v3x > maxX) maxX = v3x;
+
+        if (v1y < minY) minY = v1y; if (v1y > maxY) maxY = v1y;
+        if (v2y < minY) minY = v2y; if (v2y > maxY) maxY = v2y;
+        if (v3y < minY) minY = v3y; if (v3y > maxY) maxY = v3y;
+
+        if (v1z < minZ) minZ = v1z; if (v1z > maxZ) maxZ = v1z;
+        if (v2z < minZ) minZ = v2z; if (v2z > maxZ) maxZ = v2z;
+        if (v3z < minZ) minZ = v3z; if (v3z > maxZ) maxZ = v3z;
+
+        // Calculate signed volume
+        volume += (v1x * (v2y * v3z - v3y * v2z) +
+          v1y * (v3x * v2z - v2x * v3z) +
+          v1z * (v2x * v3y - v3x * v2y)) / 6.0;
+
+        // Calculate surface area
+        surfaceArea += triangleArea(v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z);
+      }
+    }
+
+    // Handle case where no valid vertices were found
+    if (minX === Infinity) {
+      throw new Error('Could not parse STL file: no valid vertices found');
+    }
+
+    const dimensions = {
+      x: maxX - minX,
+      y: maxY - minY,
+      z: maxZ - minZ
+    };
+
+    // Absolute volume in cubic millimeters
+    volume = Math.abs(volume);
+
+    console.log(`✅ [STL] Analysis complete:`, {
+      dimensions,
+      triangleCount,
+      volume: volume.toFixed(2),
+      surfaceArea: surfaceArea.toFixed(2),
+      fileSize
+    });
+
+    return {
+      success: true,
+      dimensions,
+      triangleCount,
+      volume,
+      surfaceArea,
+      fileSize
+    };
+  } catch (error) {
+    console.error('❌ [STL] Error analyzing file:', error);
+    return {
+      success: false,
+      error: error.message,
+      dimensions: { x: 0, y: 0, z: 0 },
+      triangleCount: 0,
+      volume: 0,
+      surfaceArea: 0,
+      fileSize: 0
+    };
   }
 });
 

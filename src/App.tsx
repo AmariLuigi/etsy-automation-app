@@ -3,8 +3,9 @@ import "./index.css"
 import Sidebar from "./components/layout/Sidebar"
 import ProductWorkspace from "./components/pages/ProductWorkspace"
 import SettingsPage from "./components/pages/SettingsPage"
+import StlAnalyzer from "./components/pages/StlAnalyzer"
 
-export type TabType = "workspace" | "settings"
+export type TabType = "workspace" | "settings" | "stl-analyzer"
 
 function App() {
     const [activeTab, setActiveTab] = useState<TabType>("workspace")
@@ -19,6 +20,7 @@ function App() {
                 <div className="flex-1 h-full overflow-y-auto custom-scrollbar">
                     {activeTab === "workspace" && <ProductWorkspace />}
                     {activeTab === "settings" && <SettingsPage />}
+                    {activeTab === "stl-analyzer" && <StlAnalyzer />}
                 </div>
             </main>
         </div>

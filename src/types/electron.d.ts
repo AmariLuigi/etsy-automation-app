@@ -25,6 +25,20 @@ export interface AccountStatus {
     error?: string;
 }
 
+export interface StlAnalysisResult {
+    success: boolean;
+    dimensions: {
+        x: number;
+        y: number;
+        z: number;
+    };
+    triangleCount: number;
+    volume: number;
+    surfaceArea: number;
+    fileSize: number;
+    error?: string;
+}
+
 export interface ElectronAPI {
     openFolderDialog: () => Promise<string | null>;
     analyzeFolder: (folderPath: string) => Promise<FolderAnalysis | null>;
@@ -54,6 +68,24 @@ export interface ElectronAPI {
         taskId: string;
     }) => Promise<{ code: number; msg: string; data: any }>;
     onTaskId: (callback: (taskId: string) => void) => void;
+    selectFolder: () => Promise<string | null>;
+    saveFile: (folderPath: string, fileName: string, dataUrl: string) => Promise<boolean>;
+    rcloneGenerateLink: (remotePath: string) => Promise<{ success: boolean; link?: string; error?: string }>;
+    rcloneCopyToDrive: (localPath: string, remotePath: string) => Promise<{ success: boolean; error?: string }>;
+    generateVideoAiApp: (data: {
+        apiKey: string;
+        webappId: string;
+        instanceType?: string;
+        nodeInfoList: Array<{
+            nodeId: string;
+            fieldName: string;
+            fieldValue: string;
+            description?: string;
+        }>;
+    }) => Promise<string | null>;
+    // STL Analysis
+    openStlDialog: () => Promise<string | null>;
+    analyzeStl: (filePath: string) => Promise<StlAnalysisResult>;
 }
 
 declare global {
@@ -61,3 +93,4 @@ declare global {
         electronAPI: ElectronAPI;
     }
 }
+

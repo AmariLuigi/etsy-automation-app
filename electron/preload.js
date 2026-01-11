@@ -30,4 +30,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Event listeners
     onTaskId: (callback) => ipcRenderer.on('runninghub:task-id', (event, taskId) => callback(taskId)),
+
+    // Media Export
+    selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
+    saveFile: (folderPath, fileName, dataUrl) => ipcRenderer.invoke('file:save', folderPath, fileName, dataUrl),
+
+    // Rclone / Google Drive
+    rcloneGenerateLink: (remotePath) => ipcRenderer.invoke('rclone:generateLink', remotePath),
+    rcloneCopyToDrive: (localPath, remotePath) => ipcRenderer.invoke('rclone:copyToDrive', localPath, remotePath),
+
+    // Video AI-App Generation
+    generateVideoAiApp: (data) => ipcRenderer.invoke('runninghub:generateVideoAiApp', data),
+
+    // STL Analysis
+    openStlDialog: () => ipcRenderer.invoke('dialog:openStl'),
+    analyzeStl: (filePath) => ipcRenderer.invoke('stl:analyze', filePath),
 });
+
