@@ -763,6 +763,33 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
     let minY = Infinity, maxY = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
 
+    // For center of mass calculation
+    let weightedSumX = 0, weightedSumY = 0, weightedSumZ = 0;
+    let totalWeight = 0;
+
+    // For mesh quality checks
+    const edgeMap = new Map(); // Track edge pairs: "v1x,v1y,v1z-v2x,v2y,v2z" -> count
+    const vertexSet = new Set(); // Track unique vertices (with epsilon tolerance)
+    let duplicateVertexCount = 0;
+    const EPSILON = 0.001; // 0.001mm tolerance for duplicate vertices
+
+    // For triangle statistics
+    let minTriangleArea = Infinity;
+    let maxTriangleArea = 0;
+    let sumTriangleArea = 0;
+
+    // Helper function to normalize vertex for duplicate detection
+    const normalizeVertex = (x, y, z) => {
+      return `${Math.round(x / EPSILON)},${Math.round(y / EPSILON)},${Math.round(z / EPSILON)}`;
+    };
+
+    // Helper function to normalize edge (always use smaller vertex first)
+    const normalizeEdge = (v1x, v1y, v1z, v2x, v2y, v2z) => {
+      const key1 = normalizeVertex(v1x, v1y, v1z);
+      const key2 = normalizeVertex(v2x, v2y, v2z);
+      return key1 < key2 ? `${key1}-${key2}` : `${key2}-${key1}`;
+    };
+
     // Helper function to calculate triangle area using cross product
     const triangleArea = (v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z) => {
       // Edge vectors
@@ -774,6 +801,51 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
       const cz = ax * by - ay * bx;
       // Area = 0.5 * |cross product|
       return 0.5 * Math.sqrt(cx * cx + cy * cy + cz * cz);
+    };
+
+    // Helper function to track edges and vertices for a triangle
+    const trackTriangle = (v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z, triArea) => {
+      // Track vertices
+      const v1Key = normalizeVertex(v1x, v1y, v1z);
+      const v2Key = normalizeVertex(v2x, v2y, v2z);
+      const v3Key = normalizeVertex(v3x, v3y, v3z);
+
+      if (vertexSet.has(v1Key)) duplicateVertexCount++;
+      else vertexSet.add(v1Key);
+      if (vertexSet.has(v2Key)) duplicateVertexCount++;
+      else vertexSet.add(v2Key);
+      if (vertexSet.has(v3Key)) duplicateVertexCount++;
+      else vertexSet.add(v3Key);
+
+      // Track edges
+      const e1 = normalizeEdge(v1x, v1y, v1z, v2x, v2y, v2z);
+      const e2 = normalizeEdge(v2x, v2y, v2z, v3x, v3y, v3z);
+      const e3 = normalizeEdge(v3x, v3y, v3z, v1x, v1y, v1z);
+
+      edgeMap.set(e1, (edgeMap.get(e1) || 0) + 1);
+      edgeMap.set(e2, (edgeMap.get(e2) || 0) + 1);
+      edgeMap.set(e3, (edgeMap.get(e3) || 0) + 1);
+
+      // Track triangle area statistics
+      if (triArea < minTriangleArea) minTriangleArea = triArea;
+      if (triArea > maxTriangleArea) maxTriangleArea = triArea;
+      sumTriangleArea += triArea;
+
+      // Calculate triangle centroid and volume for center of mass
+      const centroidX = (v1x + v2x + v3x) / 3;
+      const centroidY = (v1y + v2y + v3y) / 3;
+      const centroidZ = (v1z + v2z + v3z) / 3;
+
+      // Signed volume of tetrahedron
+      const triVolume = (v1x * (v2y * v3z - v3y * v2z) +
+        v1y * (v3x * v2z - v2x * v3z) +
+        v1z * (v2x * v3y - v3x * v2y)) / 6.0;
+
+      const absTriVolume = Math.abs(triVolume);
+      weightedSumX += centroidX * absTriVolume;
+      weightedSumY += centroidY * absTriVolume;
+      weightedSumZ += centroidZ * absTriVolume;
+      totalWeight += absTriVolume;
     };
 
     // Check if ASCII or Binary STL
@@ -804,12 +876,17 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
         maxZ = Math.max(maxZ, v1.z, v2.z, v3.z);
 
         // Calculate signed volume of tetrahedron
-        volume += (v1.x * (v2.y * v3.z - v3.y * v2.z) +
+        const triVol = (v1.x * (v2.y * v3.z - v3.y * v2.z) +
           v1.y * (v3.x * v2.z - v2.x * v3.z) +
           v1.z * (v2.x * v3.y - v3.x * v2.y)) / 6.0;
+        volume += triVol;
 
         // Calculate surface area
-        surfaceArea += triangleArea(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z);
+        const area = triangleArea(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z);
+        surfaceArea += area;
+
+        // Track triangle for quality checks, statistics, and center of mass
+        trackTriangle(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, area);
       }
     } else {
       // Parse Binary STL
@@ -861,12 +938,17 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
         if (v3z < minZ) minZ = v3z; if (v3z > maxZ) maxZ = v3z;
 
         // Calculate signed volume
-        volume += (v1x * (v2y * v3z - v3y * v2z) +
+        const triVol = (v1x * (v2y * v3z - v3y * v2z) +
           v1y * (v3x * v2z - v2x * v3z) +
           v1z * (v2x * v3y - v3x * v2y)) / 6.0;
+        volume += triVol;
 
         // Calculate surface area
-        surfaceArea += triangleArea(v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z);
+        const area = triangleArea(v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z);
+        surfaceArea += area;
+
+        // Track triangle for quality checks, statistics, and center of mass
+        trackTriangle(v1x, v1y, v1z, v2x, v2y, v2z, v3x, v3y, v3z, area);
       }
     }
 
@@ -884,12 +966,52 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
     // Absolute volume in cubic millimeters
     volume = Math.abs(volume);
 
+    // Calculate center of mass
+    let centerOfMass = { x: 0, y: 0, z: 0 };
+    if (totalWeight > 0) {
+      centerOfMass = {
+        x: weightedSumX / totalWeight,
+        y: weightedSumY / totalWeight,
+        z: weightedSumZ / totalWeight
+      };
+    }
+
+    // Calculate mesh quality metrics
+    let watertightEdges = 0; // Edges with exactly 2 triangles
+    let openEdges = 0; // Edges with 1 triangle (boundary)
+    let nonManifoldEdges = 0; // Edges with 3+ triangles
+
+    for (const count of edgeMap.values()) {
+      if (count === 2) {
+        watertightEdges++;
+      } else if (count === 1) {
+        openEdges++;
+      } else if (count > 2) {
+        nonManifoldEdges++;
+      }
+    }
+
+    const totalEdges = edgeMap.size;
+    const isWatertight = openEdges === 0 && nonManifoldEdges === 0;
+    const watertightRatio = totalEdges > 0 ? watertightEdges / totalEdges : 0;
+
+    // Calculate triangle statistics
+    const avgTriangleArea = triangleCount > 0 ? sumTriangleArea / triangleCount : 0;
+    const triangleStats = {
+      min: minTriangleArea === Infinity ? 0 : minTriangleArea,
+      max: maxTriangleArea,
+      avg: avgTriangleArea
+    };
+
     console.log(`✅ [STL] Analysis complete:`, {
       dimensions,
       triangleCount,
       volume: volume.toFixed(2),
       surfaceArea: surfaceArea.toFixed(2),
-      fileSize
+      fileSize,
+      centerOfMass,
+      isWatertight,
+      duplicateVertices: duplicateVertexCount
     });
 
     return {
@@ -898,7 +1020,26 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
       triangleCount,
       volume,
       surfaceArea,
-      fileSize
+      fileSize,
+      centerOfMass: {
+        x: centerOfMass.x,
+        y: centerOfMass.y,
+        z: centerOfMass.z,
+        relativeX: dimensions.x > 0 ? ((centerOfMass.x - minX) / dimensions.x) * 100 : 50,
+        relativeY: dimensions.y > 0 ? ((centerOfMass.y - minY) / dimensions.y) * 100 : 50,
+        relativeZ: dimensions.z > 0 ? ((centerOfMass.z - minZ) / dimensions.z) * 100 : 50
+      },
+      meshQuality: {
+        isWatertight,
+        watertightRatio,
+        openEdges,
+        nonManifoldEdges,
+        duplicateVertices: duplicateVertexCount
+      },
+      triangleStats,
+      bounds: {
+        minX, maxX, minY, maxY, minZ, maxZ
+      }
     };
   } catch (error) {
     console.error('❌ [STL] Error analyzing file:', error);
@@ -909,8 +1050,30 @@ ipcMain.handle('stl:analyze', async (event, filePath) => {
       triangleCount: 0,
       volume: 0,
       surfaceArea: 0,
-      fileSize: 0
+      fileSize: 0,
+      centerOfMass: { x: 0, y: 0, z: 0, relativeX: 50, relativeY: 50, relativeZ: 50 },
+      meshQuality: {
+        isWatertight: false,
+        watertightRatio: 0,
+        openEdges: 0,
+        nonManifoldEdges: 0,
+        duplicateVertices: 0
+      },
+      triangleStats: { min: 0, max: 0, avg: 0 },
+      bounds: { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 }
     };
+  }
+});
+
+// IPC Handler: Read STL file for visualization
+ipcMain.handle('stl:readFile', async (event, filePath) => {
+  try {
+    const buffer = fs.readFileSync(filePath);
+    // Return as base64 for blob URL creation in frontend
+    return buffer.toString('base64');
+  } catch (error) {
+    console.error('❌ [STL] Error reading file for visualization:', error);
+    return null;
   }
 });
 

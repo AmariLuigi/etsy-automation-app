@@ -45,5 +45,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // STL Analysis
     openStlDialog: () => ipcRenderer.invoke('dialog:openStl'),
     analyzeStl: (filePath) => ipcRenderer.invoke('stl:analyze', filePath),
+    readStlFile: (filePath) => ipcRenderer.invoke('stl:readFile', filePath),
 });
 

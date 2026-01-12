@@ -36,6 +36,34 @@ export interface StlAnalysisResult {
     volume: number;
     surfaceArea: number;
     fileSize: number;
+    centerOfMass?: {
+        x: number;
+        y: number;
+        z: number;
+        relativeX: number; // Percentage relative to bounding box (0-100)
+        relativeY: number;
+        relativeZ: number;
+    };
+    meshQuality?: {
+        isWatertight: boolean;
+        watertightRatio: number; // 0-1, ratio of edges with exactly 2 triangles
+        openEdges: number; // Edges with 1 triangle (boundary)
+        nonManifoldEdges: number; // Edges with 3+ triangles
+        duplicateVertices: number;
+    };
+    triangleStats?: {
+        min: number; // mm²
+        max: number; // mm²
+        avg: number; // mm²
+    };
+    bounds?: {
+        minX: number;
+        maxX: number;
+        minY: number;
+        maxY: number;
+        minZ: number;
+        maxZ: number;
+    };
     error?: string;
 }
 
@@ -86,6 +114,7 @@ export interface ElectronAPI {
     // STL Analysis
     openStlDialog: () => Promise<string | null>;
     analyzeStl: (filePath: string) => Promise<StlAnalysisResult>;
+    readStlFile: (filePath: string) => Promise<string | null>;
 }
 
 declare global {
